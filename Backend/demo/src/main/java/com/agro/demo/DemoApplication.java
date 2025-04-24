@@ -28,7 +28,7 @@ public class DemoApplication {
 			System.out.println("MongoDB Connected Successfully! ");
 			System.out.println("=================================");
 		} catch (Exception e) {
-			System.out.println("MongoDB Connection Failed!");
+			System.out.println("MongoDB Connection Failed!" + e.getMessage());
 		}
 	}
 
