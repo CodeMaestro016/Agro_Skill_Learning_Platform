@@ -6,6 +6,8 @@ import com.agro.demo.model.PostDTO;
 import com.agro.demo.repository.PostRepository;
 import com.agro.demo.repository.UserRepository;
 import com.agro.demo.util.VideoValidator;
+import com.cloudinary.Cloudinary;
+import com.cloudinary.utils.ObjectUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,7 +17,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -33,8 +38,14 @@ public class PostService {
     @Autowired
     private VideoValidator videoValidator;
 
-    public Post createPost(Post post, MultipartFile videoFile) {
-        logger.info("Creating a new post");
+    @Autowired
+    private Cloudinary cloudinary;
+
+    public Post createPost(Post post, MultipartFile video) throws IOException {
+        logger.info("Creating a new post with content: {}, images: {}, video: {}", 
+            post.getContent() != null ? "present" : "null",
+            post.getImageUrls() != null ? post.getImageUrls().size() : 0,
+            video != null ? "present" : "null");
         
         if (post.getUserId() == null || post.getUserId().trim().isEmpty()) {
             logger.error("Error: User ID is missing");
@@ -48,32 +59,92 @@ public class PostService {
             throw new IllegalArgumentException("Invalid user ID");
         }
 
-        // Validate post content - exactly one of content, images, or video must be present
-        if (!post.isValid()) {
-            logger.error("Error: Post must have exactly one of: content, images, or video");
+        // Validate that exactly one type of content is present
+        boolean hasContent = post.getContent() != null && !post.getContent().trim().isEmpty();
+        boolean hasImages = post.getImageUrls() != null && !post.getImageUrls().isEmpty();
+        boolean hasVideo = video != null && !video.isEmpty();
+
+        logger.info("Content validation - hasContent: {}, hasImages: {}, hasVideo: {}", 
+            hasContent, hasImages, hasVideo);
+
+        int contentCount = 0;
+        if (hasContent) contentCount++;
+        if (hasImages) contentCount++;
+        if (hasVideo) contentCount++;
+
+        logger.info("Content count: {}", contentCount);
+
+        if (contentCount == 0) {
+            logger.error("Error: No content provided");
             throw new IllegalArgumentException("Post must have exactly one of: content, images, or video");
         }
 
+        if (contentCount > 1) {
+            logger.error("Error: Multiple content types provided");
+            throw new IllegalArgumentException("Post can only have one type of content (text, images, or video)");
+        }
+
         // Validate images if present
-        if (post.getImageUrls() != null) {
+        if (hasImages) {
             if (post.getImageUrls().size() > 3) {
-                logger.error("Error: Maximum 3 images allowed");
+                logger.error("Error: Too many images provided");
                 throw new IllegalArgumentException("Maximum 3 images allowed");
             }
             if (post.getImageUrls().size() < 1) {
-                logger.error("Error: At least 1 image required if images are provided");
+                logger.error("Error: No images provided when images are required");
                 throw new IllegalArgumentException("At least 1 image required if images are provided");
             }
         }
 
         // Validate video duration if video is present
-        if (post.getVideoUrl() != null && !post.getVideoUrl().isEmpty() && videoFile != null) {
-            if (!videoValidator.isValidVideoDuration(videoFile)) {
-                logger.error("Error: Video duration exceeds 30 seconds");
-                throw new IllegalArgumentException("Video duration must not exceed 30 seconds");
-            }
+        if (hasVideo && !videoValidator.isValidVideoDuration(video)) {
+            logger.error("Error: Video duration exceeds limit");
+            throw new IllegalArgumentException("Video duration must not exceed 30 seconds");
         }
 
+        List<String> uploadedImageUrls = new ArrayList<>();
+        
+        // Upload images to Cloudinary
+        if (hasImages) {
+            for (String imageUrl : post.getImageUrls()) {
+                try {
+                    // Convert base64 to byte array
+                    String base64Data = imageUrl.split(",")[1];
+                    byte[] imageBytes = java.util.Base64.getDecoder().decode(base64Data);
+                    
+                    Map uploadResult = cloudinary.uploader().upload(imageBytes, 
+                        ObjectUtils.asMap(
+                            "folder", "agro/posts",
+                            "resource_type", "image"
+                        ));
+                    uploadedImageUrls.add((String) uploadResult.get("secure_url"));
+                } catch (Exception e) {
+                    logger.error("Error uploading image to Cloudinary: {}", e.getMessage());
+                    throw new IOException("Failed to upload image to Cloudinary: " + e.getMessage());
+                }
+            }
+        }
+        
+        // Upload video to Cloudinary if present
+        String videoUrl = null;
+        if (hasVideo) {
+            try {
+                Map uploadResult = cloudinary.uploader().upload(video.getBytes(), 
+                    ObjectUtils.asMap(
+                        "folder", "agro/posts",
+                        "resource_type", "video",
+                        "chunk_size", 6000000
+                    ));
+                videoUrl = (String) uploadResult.get("secure_url");
+            } catch (Exception e) {
+                logger.error("Error uploading video to Cloudinary: {}", e.getMessage());
+                throw new IOException("Failed to upload video to Cloudinary: " + e.getMessage());
+            }
+        }
+        
+        post.setImageUrls(uploadedImageUrls);
+        post.setVideoUrl(videoUrl);
+        
         return postRepository.save(post);
     }
 
@@ -114,7 +185,7 @@ public class PostService {
         return new PostDTO(post, user.orElse(null));
     }
 
-    public Post updatePost(String id, String userId, Post updatedPost, MultipartFile videoFile) {
+    public Post updatePost(String id, String userId, Post updatedPost, MultipartFile video) throws IOException {
         logger.info("Updating post with ID: {} for user: {}", id, userId);
 
         if (userId == null || userId.trim().isEmpty()) {
@@ -131,47 +202,49 @@ public class PostService {
 
         Post existingPost = postOptional.get();
 
-        // Only update fields that are provided and not empty
-        if (updatedPost.getContent() != null && !updatedPost.getContent().isEmpty()) {
-            existingPost.setContent(updatedPost.getContent());
-            // Clear other content types
-            existingPost.setImageUrls(null);
-            existingPost.setVideoUrl(null);
-        }
-
-        if (updatedPost.getCaption() != null) {
-            existingPost.setCaption(updatedPost.getCaption());
-        }
-
+        List<String> uploadedImageUrls = new ArrayList<>();
+        
+        // Upload new images to Cloudinary
         if (updatedPost.getImageUrls() != null && !updatedPost.getImageUrls().isEmpty()) {
-            if (updatedPost.getImageUrls().size() > 3) {
-                logger.error("Error: Maximum 3 images allowed");
-                throw new IllegalArgumentException("Maximum 3 images allowed");
+            for (String imageUrl : updatedPost.getImageUrls()) {
+                try {
+                    // Convert base64 or URL to byte array
+                    byte[] imageBytes = java.util.Base64.getDecoder().decode(imageUrl.split(",")[1]);
+                    Map uploadResult = cloudinary.uploader().upload(imageBytes, 
+                        ObjectUtils.asMap(
+                            "folder", "agro/posts",
+                            "resource_type", "image"
+                        ));
+                    uploadedImageUrls.add((String) uploadResult.get("secure_url"));
+                } catch (Exception e) {
+                    logger.error("Error uploading image to Cloudinary: {}", e.getMessage());
+                    throw new IOException("Failed to upload image to Cloudinary: " + e.getMessage());
+                }
             }
-            existingPost.setImageUrls(updatedPost.getImageUrls());
-            // Clear other content types
-            existingPost.setContent(null);
-            existingPost.setVideoUrl(null);
         }
-
-        if (updatedPost.getVideoUrl() != null && !updatedPost.getVideoUrl().isEmpty()) {
-            // Validate video duration if new video is provided
-            if (videoFile != null && !videoValidator.isValidVideoDuration(videoFile)) {
-                logger.error("Error: Video duration exceeds 30 seconds");
-                throw new IllegalArgumentException("Video duration must not exceed 30 seconds");
+        
+        // Upload new video to Cloudinary if present
+        String videoUrl = existingPost.getVideoUrl();
+        if (video != null && !video.isEmpty()) {
+            try {
+                Map uploadResult = cloudinary.uploader().upload(video.getBytes(), 
+                    ObjectUtils.asMap(
+                        "folder", "agro/posts",
+                        "resource_type", "video",
+                        "chunk_size", 6000000
+                    ));
+                videoUrl = (String) uploadResult.get("secure_url");
+            } catch (Exception e) {
+                logger.error("Error uploading video to Cloudinary: {}", e.getMessage());
+                throw new IOException("Failed to upload video to Cloudinary: " + e.getMessage());
             }
-            existingPost.setVideoUrl(updatedPost.getVideoUrl());
-            // Clear other content types
-            existingPost.setContent(null);
-            existingPost.setImageUrls(null);
         }
-
-        // Validate the updated post
-        if (!existingPost.isValid()) {
-            logger.error("Error: Post must have exactly one of: content, images, or video");
-            throw new IllegalArgumentException("Post must have exactly one of: content, images, or video");
-        }
-
+        
+        existingPost.setContent(updatedPost.getContent());
+        existingPost.setCaption(updatedPost.getCaption());
+        existingPost.setImageUrls(uploadedImageUrls);
+        existingPost.setVideoUrl(videoUrl);
+        
         return postRepository.save(existingPost);
     }
 

@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.List;
 
@@ -29,12 +30,12 @@ public class PostController {
             @RequestParam("userId") String userId,
             @RequestParam(value = "content", required = false) String content,
             @RequestParam(value = "caption", required = false) String caption,
-            @RequestParam(value = "imageUrls", required = false) List<MultipartFile> images,
-            @RequestParam(value = "videoUrl", required = false) MultipartFile video) {
+            @RequestParam(value = "imageUrls", required = false) String imageUrlsJson,
+            @RequestParam(value = "video", required = false) MultipartFile video) {
         
         logger.info("Received request to create a post");
         logger.info("User ID: {}, Content: {}, Caption: {}, Images: {}, Video: {}", 
-            userId, content, caption, images != null ? images.size() : 0, video != null ? video.getOriginalFilename() : "none");
+            userId, content, caption, imageUrlsJson != null ? "present" : "none", video != null ? video.getOriginalFilename() : "none");
 
         try {
             Post post = new Post();
@@ -42,19 +43,15 @@ public class PostController {
             post.setContent(content);
             post.setCaption(caption);
             
-            if (images != null && !images.isEmpty()) {
-                // Here you would typically save the images and get their URLs
-                // For now, we'll just store the original filenames
-                List<String> imageUrls = images.stream()
-                    .map(MultipartFile::getOriginalFilename)
-                    .toList();
-                post.setImageUrls(imageUrls);
-            }
-            
-            if (video != null) {
-                // Here you would typically save the video and get its URL
-                // For now, we'll just store the original filename
-                post.setVideoUrl(video.getOriginalFilename());
+            // Parse image URLs from JSON string
+            if (imageUrlsJson != null && !imageUrlsJson.isEmpty()) {
+                try {
+                    List<String> imageUrls = new ObjectMapper().readValue(imageUrlsJson, List.class);
+                    post.setImageUrls(imageUrls);
+                } catch (Exception e) {
+                    logger.error("Error parsing image URLs: {}", e.getMessage());
+                    return ResponseEntity.badRequest().body("Invalid image URLs format");
+                }
             }
             
             Post createdPost = postService.createPost(post, video);
@@ -140,8 +137,7 @@ public class PostController {
             }
             
             if (images != null && !images.isEmpty()) {
-                // Here you would typically save the images and get their URLs
-                // For now, we'll just store the original filenames
+               
                 List<String> imageUrls = images.stream()
                     .map(MultipartFile::getOriginalFilename)
                     .toList();
@@ -151,8 +147,7 @@ public class PostController {
             }
             
             if (video != null) {
-                // Here you would typically save the video and get its URL
-                // For now, we'll just store the original filename
+                
                 updatedPost.setVideoUrl(video.getOriginalFilename());
             } else {
                 updatedPost.setVideoUrl(existingPost.getVideoUrl());
@@ -207,12 +202,7 @@ public class PostController {
         }
     }
 
-    /*@GetMapping("/test")
-    public ResponseEntity<String> testConnection() {
-        logger.info(" Test endpoint called");
-        return ResponseEntity.ok("Connection successful");
-    }*/
-
+    
     
     
 

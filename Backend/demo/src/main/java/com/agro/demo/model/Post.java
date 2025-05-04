@@ -1,14 +1,12 @@
 package com.agro.demo.model;
 
 import lombok.Data;
-import lombok.Builder;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
-import java.util.List;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
-@Builder
 @Document(collection = "posts")
 public class Post {
     @Id
@@ -19,27 +17,26 @@ public class Post {
     private List<String> imageUrls;
     private String videoUrl;
     private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 
     public Post() {
         this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
     }
 
-    public Post(String id, String userId, String content, String caption, List<String> imageUrls, String videoUrl, LocalDateTime createdAt) {
-        this.id = id;
-        this.userId = userId;
-        this.content = content;
-        this.caption = caption;
-        this.imageUrls = imageUrls;
-        this.videoUrl = videoUrl;
-        this.createdAt = createdAt != null ? createdAt : LocalDateTime.now();
-    }
-
-    // Validation method to ensure only one type of content is present
     public boolean isValid() {
+        // A post must have exactly one type of content (text, images, or video)
+        boolean hasContent = content != null && !content.trim().isEmpty();
+        boolean hasImages = imageUrls != null && !imageUrls.isEmpty();
+        boolean hasVideo = videoUrl != null && !videoUrl.isEmpty();
+
+        // Count how many types of content are present
         int contentCount = 0;
-        if (content != null && !content.isEmpty()) contentCount++;
-        if (imageUrls != null && !imageUrls.isEmpty()) contentCount++;
-        if (videoUrl != null && !videoUrl.isEmpty()) contentCount++;
+        if (hasContent) contentCount++;
+        if (hasImages) contentCount++;
+        if (hasVideo) contentCount++;
+
+        // Must have exactly one type of content
         return contentCount == 1;
     }
 }
