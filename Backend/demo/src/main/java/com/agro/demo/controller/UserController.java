@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.http.HttpStatus;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -126,5 +127,35 @@ public class UserController {
 
         logger.info("User deleted successfully");
         return ResponseEntity.ok("User deleted successfully");
+    }
+
+    // 5. GET - Search users
+    @GetMapping("/search")
+    public ResponseEntity<?> searchUsers(@RequestParam String query) {
+        logger.info("Searching users with query: {}", query);
+        
+        // Log all users in database for debugging
+        List<User> allUsers = userRepository.findAll();
+        logger.info("Total users in database: {}", allUsers.size());
+        allUsers.forEach(user -> logger.info("User: {} {} ({})", user.getFirstName(), user.getLastName(), user.getEmail()));
+        
+        // Search users by name, email, or about field
+        List<User> users = userRepository.findByFirstNameContainingIgnoreCaseOrLastNameContainingIgnoreCaseOrEmailContainingIgnoreCaseOrAboutContainingIgnoreCase(
+            query, query, query, query
+        );
+        
+        logger.info("Found {} users matching query: {}", users.size(), query);
+        users.forEach(user -> logger.info("Match: {} {} ({})", user.getFirstName(), user.getLastName(), user.getEmail()));
+        
+        return ResponseEntity.ok(users);
+    }
+
+    // 6. GET - Debug endpoint to list all users
+    @GetMapping("/debug/all")
+    public ResponseEntity<?> getAllUsers() {
+        logger.info("Fetching all users for debugging");
+        List<User> users = userRepository.findAll();
+        logger.info("Found {} total users", users.size());
+        return ResponseEntity.ok(users);
     }
 }

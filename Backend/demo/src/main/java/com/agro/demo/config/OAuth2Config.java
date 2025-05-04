@@ -20,14 +20,13 @@ public class OAuth2Config {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-            .cors().and()
+            .cors(cors -> cors.configurationSource(corsConfigurationSource())) // ✅ Replaces .cors().and()
             .csrf(csrf -> csrf.disable())
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**").permitAll()
-                .requestMatchers("/oauth2/**").permitAll()
+                .requestMatchers("/api/**", "/oauth2/**").permitAll()
                 .anyRequest().authenticated()
             )
             .oauth2Login(oauth2 -> oauth2
@@ -54,12 +53,13 @@ public class OAuth2Config {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.addAllowedOrigin("*");
+        configuration.addAllowedOriginPattern("*"); // 🔁 Use addAllowedOriginPattern for Spring Security 6
         configuration.addAllowedMethod("*");
         configuration.addAllowedHeader("*");
-        
+        configuration.setAllowCredentials(true); // Optional, depends on your frontend
+
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
     }
-} 
+}
