@@ -24,6 +24,19 @@ const Login = () => {
     try {
       const response = await login(formData.email, formData.password);
       authLogin(response.user, response.token);
+      
+      // Fetch complete user data after successful login
+      const userResponse = await fetch('http://localhost:8080/api/user/me', {
+        headers: {
+          Authorization: `Bearer ${response.token}`,
+        },
+      });
+      
+      if (userResponse.ok) {
+        const userData = await userResponse.json();
+        authLogin(userData, response.token);
+      }
+      
       navigate('/home');
     } catch (err) {
       setError(err.message || 'Login failed');
