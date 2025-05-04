@@ -50,7 +50,7 @@ const UpdateProfile = () => {
         coverPhoto: formData.coverPhoto !== user?.coverPhoto ? formData.coverPhoto : undefined
       };
 
-      const response = await fetch('http://localhost:8080/api/user/update', {
+      const response = await fetch('http://localhost:8081/api/user/update', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

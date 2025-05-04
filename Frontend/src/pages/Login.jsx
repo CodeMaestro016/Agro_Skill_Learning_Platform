@@ -26,7 +26,7 @@ const Login = () => {
       authLogin(response.user, response.token);
       
       // Fetch complete user data after successful login
-      const userResponse = await fetch('http://localhost:8080/api/user/me', {
+      const userResponse = await fetch('http://localhost:8081/api/user/me', {
         headers: {
           Authorization: `Bearer ${response.token}`,
         },
