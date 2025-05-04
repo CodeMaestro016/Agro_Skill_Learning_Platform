@@ -117,12 +117,7 @@
 			<version>2.9.1</version>
 		</dependency>
 
-		<!-- Cloudinary -->
-		<dependency>
-			<groupId>com.cloudinary</groupId>
-			<artifactId>cloudinary-http44</artifactId>
-			<version>1.35.0</version>
-		</dependency>
+		
 		
 	</dependencies>
 
