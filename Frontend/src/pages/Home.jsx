@@ -139,10 +139,10 @@ const Home = () => {
 
   return (
     <div className="min-h-screen bg-gray-100 pt-16">
-      <div className="container mx-auto px-4 py-8">
-        <div className="bg-white rounded-lg shadow-lg p-6">
+      <div className="max-w-4xl mx-auto px-4 py-8">
+        <div className="bg-white rounded-lg shadow-md p-4">
           {/* Feed Section */}
-          <div className="mt-8">
+          <div className="mt-4">
             {feed.map((post, index) => renderPost(post, index))}
             {loading && (
               <div className="text-center py-4">
