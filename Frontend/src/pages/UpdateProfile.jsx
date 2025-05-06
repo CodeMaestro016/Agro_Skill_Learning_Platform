@@ -1,10 +1,16 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
 const UpdateProfile = () => {
   const { user, token, updateUser } = useAuth();
   const navigate = useNavigate();
+
+  const firstNameRef = useRef(null);
+  const lastNameRef = useRef(null);
+  const aboutRef = useRef(null);
+  const addressRef = useRef(null);
+  const contactNumberRef = useRef(null);
 
   const [formData, setFormData] = useState({
     firstName: user?.firstName || '',
@@ -20,8 +26,14 @@ const UpdateProfile = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null); // To capture error messages
 
+  // Focus first input when component mounts
+  useEffect(() => {
+    firstNameRef.current?.focus();
+  }, []);
+
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
   const handleFileChange = (e) => {
@@ -30,7 +42,7 @@ const UpdateProfile = () => {
       const reader = new FileReader();
       reader.onloadend = () => {
         // Only store the base64 string temporarily in formData
-        setFormData({ ...formData, [e.target.name]: reader.result });
+        setFormData(prev => ({ ...prev, [e.target.name]: reader.result }));
       };
       reader.readAsDataURL(file);
     }
@@ -98,11 +110,12 @@ const UpdateProfile = () => {
               First Name
             </label>
             <input 
+              ref={firstNameRef}
               id="firstName"
               name="firstName" 
-              className="w-full border p-2 rounded" 
+              className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
               value={formData.firstName} 
-              onChange={handleChange} 
+              onChange={handleChange}
               required 
             />
           </div>
@@ -112,11 +125,12 @@ const UpdateProfile = () => {
               Last Name
             </label>
             <input 
+              ref={lastNameRef}
               id="lastName"
               name="lastName" 
-              className="w-full border p-2 rounded" 
+              className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
               value={formData.lastName} 
-              onChange={handleChange} 
+              onChange={handleChange}
               required 
             />
           </div>
@@ -129,7 +143,7 @@ const UpdateProfile = () => {
               id="email"
               name="email" 
               disabled 
-              className="w-full border p-2 rounded bg-gray-100" 
+              className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100" 
               value={formData.email} 
             />
           </div>
@@ -139,12 +153,13 @@ const UpdateProfile = () => {
               About
             </label>
             <textarea 
+              ref={aboutRef}
               id="about"
               name="about" 
               rows="3" 
-              className="w-full border p-2 rounded" 
+              className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
               value={formData.about} 
-              onChange={handleChange} 
+              onChange={handleChange}
             />
           </div>
 
@@ -153,11 +168,12 @@ const UpdateProfile = () => {
               Address
             </label>
             <input 
+              ref={addressRef}
               id="address"
               name="address" 
-              className="w-full border p-2 rounded" 
+              className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
               value={formData.address} 
-              onChange={handleChange} 
+              onChange={handleChange}
             />
           </div>
 
@@ -166,11 +182,12 @@ const UpdateProfile = () => {
               Contact Number
             </label>
             <input 
+              ref={contactNumberRef}
               id="contactNumber"
               name="contactNumber" 
-              className="w-full border p-2 rounded" 
+              className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
               value={formData.contactNumber} 
-              onChange={handleChange} 
+              onChange={handleChange}
             />
           </div>
           

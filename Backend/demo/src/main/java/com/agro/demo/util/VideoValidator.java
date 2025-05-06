@@ -19,6 +19,10 @@ public class VideoValidator {
 
     public boolean isValidVideoDuration(MultipartFile videoFile) {
         try {
+            if (videoFile == null || videoFile.isEmpty()) {
+                return false;
+            }
+
             Metadata metadata = new Metadata();
             BodyContentHandler handler = new BodyContentHandler();
             Parser parser = new MP4Parser();
@@ -51,7 +55,7 @@ public class VideoValidator {
             }
             return false;
         } catch (IOException | SAXException | TikaException e) {
-            throw new RuntimeException("Error validating video duration", e);
+            throw new RuntimeException("Error validating video duration: " + e.getMessage(), e);
         }
     }
 } 
