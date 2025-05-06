@@ -253,6 +253,12 @@ public class PostService {
         
         return posts.map(post -> {
             Optional<User> user = userRepository.findById(post.getUserId());
+            if (user.isPresent()) {
+                logger.info("User found for post {}: {} {}", post.getId(), user.get().getFirstName(), user.get().getLastName());
+                logger.info("User profile photo: {}", user.get().getProfilePhoto());
+            } else {
+                logger.warn("No user found for post {}", post.getId());
+            }
             return new PostDTO(post, user.orElse(null));
         });
     }
