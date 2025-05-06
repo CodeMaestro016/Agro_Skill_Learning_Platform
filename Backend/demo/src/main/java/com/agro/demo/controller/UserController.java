@@ -3,12 +3,15 @@ package com.agro.demo.controller;
 import com.agro.demo.model.User;
 import com.agro.demo.repository.UserRepository;
 import com.agro.demo.security.JwtUtil;
+import com.agro.demo.service.CloudinaryService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -22,10 +25,12 @@ public class UserController {
 
     private final UserRepository userRepository;
     private final JwtUtil jwtUtil;
+    private final CloudinaryService cloudinaryService;
 
-    public UserController(UserRepository userRepository, JwtUtil jwtUtil) {
+    public UserController(UserRepository userRepository, JwtUtil jwtUtil, CloudinaryService cloudinaryService) {
         this.userRepository = userRepository;
         this.jwtUtil = jwtUtil;
+        this.cloudinaryService = cloudinaryService;
     }
 
     // 1. POST - Add user details
@@ -59,8 +64,16 @@ public class UserController {
 
     // 2. PUT - Update user details
     @PutMapping("/update")
-    public ResponseEntity<?> updateProfile(@RequestHeader("Authorization") String authHeader,
-                                           @RequestBody Map<String, String> request) {
+    public ResponseEntity<?> updateProfile(
+        @RequestHeader("Authorization") String authHeader,
+        @RequestParam(value = "firstName", required = false) String firstName,
+        @RequestParam(value = "lastName", required = false) String lastName,
+        @RequestParam(value = "about", required = false) String about,
+        @RequestParam(value = "address", required = false) String address,
+        @RequestParam(value = "contactNumber", required = false) String contactNumber,
+        @RequestParam(value = "profilePhoto", required = false) MultipartFile profilePhoto,
+        @RequestParam(value = "coverPhoto", required = false) MultipartFile coverPhoto) {
+        
         String token = authHeader.replace("Bearer ", "");
         String email = jwtUtil.getEmailFromToken(token);
 
@@ -74,22 +87,43 @@ public class UserController {
 
         User user = optionalUser.get();
 
-        // Update name fields
-        user.setFirstName(request.getOrDefault("firstName", user.getFirstName()));
-        user.setLastName(request.getOrDefault("lastName", user.getLastName()));
-        
-        // Update other fields
-        user.setAbout(request.getOrDefault("about", user.getAbout()));
-        user.setAddress(request.getOrDefault("address", user.getAddress()));
-        user.setContactNumber(request.getOrDefault("contactNumber", user.getContactNumber()));
-        user.setProfilePhoto(request.getOrDefault("profilePhoto", user.getProfilePhoto()));
-        user.setCoverPhoto(request.getOrDefault("coverPhoto", user.getCoverPhoto()));
-        user.setImageUrl(request.getOrDefault("imageUrl", user.getImageUrl()));
+        try {
+            // Update name fields
+            if (firstName != null) user.setFirstName(firstName);
+            if (lastName != null) user.setLastName(lastName);
+            
+            // Update other fields
+            if (about != null) user.setAbout(about);
+            if (address != null) user.setAddress(address);
+            if (contactNumber != null) user.setContactNumber(contactNumber);
 
-        userRepository.save(user);
+            // Handle profile photo upload
+            if (profilePhoto != null && !profilePhoto.isEmpty()) {
+                List<MultipartFile> files = Collections.singletonList(profilePhoto);
+                List<String> urls = cloudinaryService.uploadImages(files);
+                if (!urls.isEmpty()) {
+                    user.setProfilePhoto(urls.get(0));
+                }
+            }
 
-        logger.info("User profile updated successfully");
-        return ResponseEntity.ok(user);
+            // Handle cover photo upload
+            if (coverPhoto != null && !coverPhoto.isEmpty()) {
+                List<MultipartFile> files = Collections.singletonList(coverPhoto);
+                List<String> urls = cloudinaryService.uploadImages(files);
+                if (!urls.isEmpty()) {
+                    user.setCoverPhoto(urls.get(0));
+                }
+            }
+
+            userRepository.save(user);
+
+            logger.info("User profile updated successfully");
+            return ResponseEntity.ok(user);
+        } catch (Exception e) {
+            logger.error("Error updating user profile: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body("Failed to update profile: " + e.getMessage());
+        }
     }
 
     // 3. GET - Get current user details

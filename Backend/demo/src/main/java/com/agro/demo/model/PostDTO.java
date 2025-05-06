@@ -7,7 +7,7 @@ import lombok.EqualsAndHashCode;
 @EqualsAndHashCode(callSuper = true)
 public class PostDTO extends Post {
     private String userName;
-    private String userImageUrl;
+    private String profilePhoto;
 
     public PostDTO(Post post, User user) {
         super();
@@ -21,7 +21,7 @@ public class PostDTO extends Post {
         
         if (user != null) {
             this.userName = user.getFirstName() + " " + user.getLastName();
-            this.userImageUrl = user.getImageUrl();
+            this.profilePhoto = user.getProfilePhoto();
         }
     }
 } 

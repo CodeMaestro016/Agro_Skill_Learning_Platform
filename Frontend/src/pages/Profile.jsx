@@ -500,7 +500,7 @@ const Profile = () => {
 
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-6 w-full max-w-2xl">
+        <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] flex flex-col">
           <h2 className="text-2xl font-bold mb-4">
             {mode === 'create' ? 'Create New Post' : 'Edit Post'}
           </h2>
@@ -509,7 +509,7 @@ const Profile = () => {
               {error}
             </div>
           )}
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto pr-2">
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">Caption</label>
@@ -517,7 +517,7 @@ const Profile = () => {
                   type="text"
                   value={formData.caption}
                   onChange={(e) => setFormData(prev => ({ ...prev, caption: e.target.value }))}
-                  className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
                   placeholder="Add a caption..."
                 />
               </div>
@@ -526,7 +526,7 @@ const Profile = () => {
                 <textarea
                   value={formData.content}
                   onChange={(e) => setFormData(prev => ({ ...prev, content: e.target.value }))}
-                  className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
                   rows="3"
                   placeholder="Write something..."
                 />
@@ -596,7 +596,7 @@ const Profile = () => {
                 )}
               </div>
             </div>
-            <div className="mt-6 flex justify-end space-x-3">
+            <div className="mt-6 flex justify-end space-x-3 sticky bottom-0 bg-white pt-4 border-t">
               <button
                 type="button"
                 onClick={onClose}
@@ -608,7 +608,7 @@ const Profile = () => {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
               >
                 {isSubmitting ? 'Saving...' : 'Save Post'}
               </button>
@@ -655,7 +655,7 @@ const Profile = () => {
       <div className="min-h-screen bg-gray-100 pt-16">
         <div className="container mx-auto px-4 py-8">
           <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500"></div>
           </div>
         </div>
         <NavBar />
@@ -705,8 +705,8 @@ const Profile = () => {
                       className="w-32 h-32 rounded-full border-4 border-white object-cover"
                     />
                   ) : (
-                    <div className="w-32 h-32 rounded-full border-4 border-white bg-gray-200 flex items-center justify-center">
-                      <span className="text-4xl text-gray-500">
+                    <div className="w-32 h-32 rounded-full border-4 border-white bg-green-100 flex items-center justify-center">
+                      <span className="text-4xl text-green-800">
                         {profileUser?.firstName ? profileUser.firstName.charAt(0).toUpperCase() : 'U'}
                       </span>
                     </div>
@@ -722,42 +722,40 @@ const Profile = () => {
               {isOwnProfile && (
                 <button
                   onClick={() => navigate('/update-profile')}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500"
                 >
                   Edit Profile
                 </button>
               )}
             </div>
 
-            {/* About Section */}
-            {profileUser?.about && (
-              <div className="mt-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-2">About</h2>
-                <p className="text-gray-600">{profileUser.about}</p>
+            {/* User Details Section */}
+            <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* About Section */}
+              <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
+                <h2 className="text-xl font-semibold text-gray-900 mb-4">About</h2>
+                <p className="text-gray-700">
+                  {profileUser?.about || 'No about information available'}
+                </p>
               </div>
-            )}
 
-            {/* Contact Information */}
-            <div className="mt-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">Contact Information</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <p className="text-gray-600">
-                    <span className="font-medium">Email:</span> {profileUser?.email}
-                  </p>
-                  {profileUser?.phone && (
-                    <p className="text-gray-600">
-                      <span className="font-medium">Phone:</span> {profileUser.phone}
-                    </p>
-                  )}
-                </div>
-                {profileUser?.location && (
+              {/* Contact Information */}
+              <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
+                <h2 className="text-xl font-semibold text-gray-900 mb-4">Contact Information</h2>
+                <div className="space-y-3">
                   <div>
-                    <p className="text-gray-600">
-                      <span className="font-medium">Location:</span> {profileUser.location}
+                    <p className="text-sm text-gray-500">Address</p>
+                    <p className="text-gray-700">
+                      {profileUser?.address || 'No address available'}
                     </p>
                   </div>
-                )}
+                  <div>
+                    <p className="text-sm text-gray-500">Contact Number</p>
+                    <p className="text-gray-700">
+                      {profileUser?.contactNumber || 'No contact number available'}
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -794,8 +792,8 @@ const Profile = () => {
                                 className="w-12 h-12 rounded-full object-cover border border-gray-200"
                               />
                             ) : (
-                              <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center border border-gray-200">
-                                <span className="text-gray-500 text-lg font-bold">
+                              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center border border-gray-200">
+                                <span className="text-green-800 text-lg font-bold">
                                   {profileUser?.firstName ? profileUser.firstName.charAt(0).toUpperCase() : 'U'}
                                 </span>
                               </div>
@@ -813,20 +811,26 @@ const Profile = () => {
                             <div className="flex gap-2">
                               <button
                                 onClick={() => handleEditPost(post)}
-                                className="text-blue-500 hover:text-blue-700 font-medium px-2 py-1 rounded transition-colors duration-150"
+                                className="text-green-500 hover:text-green-700 p-2 rounded-full hover:bg-green-50 transition-colors duration-150"
                                 disabled={isSubmitting}
+                                title="Edit post"
                               >
-                                Edit
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
                               </button>
                               <button
                                 onClick={() => {
                                   setSelectedPost(post);
                                   setShowDeleteModal(true);
                                 }}
-                                className="text-red-500 hover:text-red-700 font-medium px-2 py-1 rounded transition-colors duration-150"
+                                className="text-red-500 hover:text-red-700 p-2 rounded-full hover:bg-red-50 transition-colors duration-150"
                                 disabled={isDeleting}
+                                title="Delete post"
                               >
-                                Delete
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
                               </button>
                             </div>
                           )}
@@ -843,12 +847,13 @@ const Profile = () => {
                         {post.imageUrls && post.imageUrls.length > 0 && (
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-3">
                             {post.imageUrls.map((url, index) => (
-                              <img
-                                key={`profile-post-${post.id}-image-${index}-${url}`}
-                                src={url}
-                                alt={`Post image ${index + 1}`}
-                                className="w-full h-52 object-cover rounded-xl border border-gray-200"
-                              />
+                              <div key={`profile-post-${post.id}-image-${index}-${url}`} className="relative aspect-square">
+                                <img
+                                  src={url}
+                                  alt={`Post image ${index + 1}`}
+                                  className="w-full h-full object-cover rounded-xl border border-gray-200"
+                                />
+                              </div>
                             ))}
                           </div>
                         )}
@@ -867,12 +872,24 @@ const Profile = () => {
                     ))}
                   </div>
                   {!showAllPosts && userPosts.length > 2 && (
-                    <div className="flex justify-center mt-4">
+                    <div className="flex justify-center mt-8">
                       <button
                         onClick={() => setShowAllPosts(true)}
-                        className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="flex items-center justify-center w-12 h-12 bg-white text-green-600 rounded-full border-2 border-green-500 hover:bg-green-50 transition-all duration-300 shadow-sm hover:shadow-md hover:scale-110"
                       >
-                        See More
+                        <svg 
+                          className="w-6 h-6" 
+                          fill="none" 
+                          stroke="currentColor" 
+                          viewBox="0 0 24 24"
+                        >
+                          <path 
+                            strokeLinecap="round" 
+                            strokeLinejoin="round" 
+                            strokeWidth="2" 
+                            d="M9 5l7 7-7 7"
+                          />
+                        </svg>
                       </button>
                     </div>
                   )}

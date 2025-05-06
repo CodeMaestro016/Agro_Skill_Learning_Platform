@@ -88,22 +88,32 @@ export const getAllPosts = async (userId) => {
 export const getFeed = async (page = 0, size = 10) => {
   try {
     const response = await api.get(`/auth/posts/feed?page=${page}&size=${size}`);
-    console.log('Feed response:', response.data); // Debug log
+    console.log('Raw Feed response:', response.data); // Debug log for raw response
+    console.log('Feed content:', response.data.content); // Debug log for content array
     
     // Process the feed data to ensure user information is properly formatted
     const processedData = {
       ...response.data,
-      content: response.data.content.map(post => ({
-        ...post,
-        userName: post.userName || 'Unknown User',
-        userImageUrl: post.userImageUrl || null,
-        createdAt: new Date(post.createdAt).toISOString(),
-      })),
+      content: response.data.content.map(post => {
+        console.log('Processing post:', post); // Debug log for each post
+        console.log('Post user data:', {
+          userName: post.userName,
+          profilePhoto: post.profilePhoto
+        }); // Debug log for user data
+        
+        return {
+          ...post,
+          userName: post.userName || 'Unknown User',
+          profilePhoto: post.profilePhoto || null,
+          createdAt: new Date(post.createdAt).toISOString(),
+        };
+      }),
     };
     
+    console.log('Processed feed data:', processedData); // Debug log for final processed data
     return processedData;
   } catch (error) {
-    console.error('Error fetching feed:', error.response?.data || error.message); // Debug log
+    console.error('Error fetching feed:', error.response?.data || error.message);
     throw error.response?.data || error.message;
   }
 };
