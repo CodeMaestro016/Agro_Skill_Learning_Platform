@@ -8,7 +8,9 @@ const NavBar = () => {
   const location = useLocation();
   const { user, logout } = useAuth();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const dropdownRef = useRef(null);
+  const mobileMenuRef = useRef(null);
 
   const isActive = (path) => {
     return location.pathname === path;
@@ -18,6 +20,7 @@ const NavBar = () => {
     { path: '/home', label: 'Home', icon: '🏠' },
     { path: '/connections', label: 'Connections', icon: '👥' },
     { path: '/chat', label: 'ChatBox', icon: '💬' },
+    { path: '/learning-plan', label: 'Learning Plan', icon: '📚' },
   ];
 
   const handleLogout = () => {
@@ -25,11 +28,14 @@ const NavBar = () => {
     navigate('/login');
   };
 
-  // Close dropdown when clicking outside
+  // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsDropdownOpen(false);
+      }
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target)) {
+        setIsMobileMenuOpen(false);
       }
     };
 
@@ -44,14 +50,36 @@ const NavBar = () => {
       <div className="max-w-screen-xl mx-auto px-4">
         <div className="flex justify-between items-center h-20">
           {/* Logo/Brand */}
-          <div className="flex items-center -ml-20">
+          <div className="flex items-center">
             <Logo 
               onClick={() => navigate('/home')}
               className="hover:opacity-90 transition-opacity"
             />
           </div>
 
-          {/* Navigation Links */}
+          {/* Mobile Menu Button */}
+          <button
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="md:hidden p-2 rounded-lg hover:bg-gray-100 focus:outline-none"
+          >
+            <svg
+              className="w-6 h-6 text-gray-600"
+              fill="none"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              {isMobileMenuOpen ? (
+                <path d="M6 18L18 6M6 6l12 12" />
+              ) : (
+                <path d="M4 6h16M4 12h16M4 18h16" />
+              )}
+            </svg>
+          </button>
+
+          {/* Navigation Links - Desktop */}
           <div className="hidden md:flex items-center space-x-8">
             {navItems.map((item) => (
               <button
@@ -70,8 +98,8 @@ const NavBar = () => {
           </div>
 
           {/* Profile Section */}
-          <div className="flex items-center space-x-5 -mr-20">
-            <div className="relative">
+          <div className="flex items-center space-x-5">
+            <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                 className="flex items-center space-x-2 focus:outline-none"
@@ -124,6 +152,32 @@ const NavBar = () => {
             </div>
           </div>
         </div>
+
+        {/* Mobile Menu */}
+        {isMobileMenuOpen && (
+          <div 
+            ref={mobileMenuRef}
+            className="md:hidden border-t border-gray-200 py-4"
+          >
+            {navItems.map((item) => (
+              <button
+                key={item.path}
+                onClick={() => {
+                  navigate(item.path);
+                  setIsMobileMenuOpen(false);
+                }}
+                className={`w-full flex items-center space-x-2 px-4 py-3 rounded-lg transition-all duration-200 ${
+                  location.pathname === item.path
+                    ? 'text-green-600 bg-green-50'
+                    : 'text-gray-600 hover:text-green-600 hover:bg-green-50'
+                }`}
+              >
+                {item.icon}
+                <span className="text-lg font-medium">{item.label}</span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </nav>
   );
