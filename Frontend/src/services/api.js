@@ -228,4 +228,76 @@ export const deletePost = async (id, userId) => {
   }
 };
 
+// Create a new learning plan
+export const createLearningPlan = async (planData) => {
+  try {
+    const response = await api.post('/auth/learning-plan', planData);
+    return response.data;
+  } catch (error) {
+    throw handleApiError(error);
+  }
+};
+
+// Fetch all learning plans for a user
+export const getLearningPlans = async (userId) => {
+  try {
+    const response = await api.get('/auth/learning-plan', {
+      params: { userId },
+    });
+    return response.data; // Return the list of learning plans
+  } catch (error) {
+    throw handleApiError(error);
+  }
+};
+
+// Fetch a single learning plan by ID for a user
+export const getLearningPlanById = async (id, userId) => {
+  try {
+    const response = await api.get(`/auth/learning-plan/${id}`, {
+      params: { userId },
+    });
+    return response.data; // Return the specific learning plan
+  } catch (error) {
+    throw handleApiError(error);
+  }
+};
+
+// Update a learning plan
+export const updateLearningPlan = async (id, userId, planData) => {
+  try {
+    const response = await api.put(`/auth/learning-plan/${id}`, planData, {
+      params: { userId },
+    });
+    return response.data; // Return the updated learning plan
+  } catch (error) {
+    throw handleApiError(error);
+  }
+};
+
+// Delete a learning plan
+export const deleteLearningPlan = async (id, userId) => {
+  try {
+    const response = await api.delete(`/auth/learning-plan/${id}`, {
+      params: { userId },
+    });
+    return response.data; // Return a success message or status
+  } catch (error) {
+    throw handleApiError(error);
+  }
+};
+
+// Update step status
+export const updateStepStatus = async (planId, stepIndex, userId, status) => {
+  try {
+    const response = await api.put(
+      `/auth/learning-plan/${planId}/steps/${stepIndex}`,
+      { status },
+      { params: { userId } }
+    );
+    return response.data; // Return the updated learning plan
+  } catch (error) {
+    throw handleApiError(error);
+  }
+};
+
 export default api;

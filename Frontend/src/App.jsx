@@ -7,10 +7,36 @@ import Home from './pages/Home';
 import UpdateProfile from './pages/UpdateProfile';
 import Profile from './pages/Profile';
 import ProtectedRoute from './components/ProtectedRoute';
+import LearningPlanPage from './pages/LearningPlanPage';
+import UpdateAndDeleteLearningPlan from './pages/UpdateAndDeleteLearningPlan';
+import NavBar from './components/NavBar';
 
-// Placeholder components for new routes
-const Connections = () => <div className="min-h-screen bg-gray-100 pb-20 p-4">Connections Page</div>;
-const ChatBox = () => <div className="min-h-screen bg-gray-100 pb-20 p-4">ChatBox Page</div>;
+// Placeholder components for new routes with compact layout
+const Connections = () => (
+  <div className="min-h-screen bg-gray-100 pb-16 pt-20">
+    <div className="max-w-4xl mx-auto px-4">
+      <div className="bg-white rounded-lg shadow-md p-4">Connections Page</div>
+    </div>
+  </div>
+);
+
+const ChatBox = () => (
+  <div className="min-h-screen bg-gray-100 pb-16 pt-20">
+    <div className="max-w-4xl mx-auto px-4">
+      <div className="bg-white rounded-lg shadow-md p-4">ChatBox Page</div>
+    </div>
+  </div>
+);
+
+// Layout component that includes NavBar
+const Layout = ({ children }) => {
+  return (
+    <div className="min-h-screen bg-gray-100">
+      <NavBar />
+      {children}
+    </div>
+  );
+};
 
 function App() {
   return (
@@ -19,12 +45,62 @@ function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
-          <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
-          <Route path="/connections" element={<ProtectedRoute><Connections /></ProtectedRoute>} />
-          <Route path="/chat" element={<ProtectedRoute><ChatBox /></ProtectedRoute>} />
-          <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-          <Route path="/profile/:userId" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-          <Route path="/update-profile" element={<ProtectedRoute><UpdateProfile /></ProtectedRoute>} />
+          <Route path="/home" element={
+            <ProtectedRoute>
+              <Layout>
+                <Home />
+              </Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/learning-plan" element={
+            <ProtectedRoute>
+              <Layout>
+                <LearningPlanPage />
+              </Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/connections" element={
+            <ProtectedRoute>
+              <Layout>
+                <Connections />
+              </Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/chat" element={
+            <ProtectedRoute>
+              <Layout>
+                <ChatBox />
+              </Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/profile" element={
+            <ProtectedRoute>
+              <Layout>
+                <Profile />
+              </Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/profile/:userId" element={
+            <ProtectedRoute>
+              <Layout>
+                <Profile />
+              </Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/update-profile" element={
+            <ProtectedRoute>
+              <Layout>
+                <UpdateProfile />
+              </Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/update-plan/:id" element={
+            <ProtectedRoute>
+              <Layout>
+                <UpdateAndDeleteLearningPlan />
+              </Layout>
+            </ProtectedRoute>
+          } />
           <Route path="/" element={<Navigate to="/login" replace />} />
         </Routes>
       </Router>

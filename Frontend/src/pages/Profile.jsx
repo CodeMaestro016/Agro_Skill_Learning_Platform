@@ -1,8 +1,9 @@
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { getCurrentUserProfile, getUserProfile, getAllPosts, deletePost, addPost, editPost } from '../services/api';
+import { getCurrentUserProfile, getUserProfile, getAllPosts, deletePost, addPost, editPost, getLearningPlans } from '../services/api';
 import NavBar from '../components/NavBar';
+import CreateNewPlan from './CreateNewPlan';
 
 const Profile = () => {
   const { user: currentUser } = useAuth();
@@ -12,8 +13,10 @@ const Profile = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [userPosts, setUserPosts] = useState([]);
+  const [userLearningPlans, setUserLearningPlans] = useState([]);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showCreatePlanForm, setShowCreatePlanForm] = useState(false);
   
   // Modal states
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -54,6 +57,14 @@ const Profile = () => {
         // Fetch user's posts
         const posts = await getAllPosts(userData.id);
         setUserPosts(posts);
+
+        // Fetch user's learning plans
+        try {
+          const plans = await getLearningPlans(userData.id);
+          setUserLearningPlans(plans);
+        } catch (err) {
+          console.error('Error fetching learning plans:', err);
+        }
       } catch (err) {
         setError(err.message || 'Failed to load profile');
         console.error('Error fetching user profile:', err);
@@ -650,6 +661,22 @@ const Profile = () => {
     );
   };
 
+  const handleCreatePlan = () => {
+    setShowCreatePlanForm(true);
+  };
+
+  const handlePlanCreated = () => {
+    setShowCreatePlanForm(false);
+    // Refresh learning plans
+    if (profileUser) {
+      getLearningPlans(profileUser.id).then(plans => {
+        setUserLearningPlans(plans);
+      }).catch(err => {
+        console.error('Error refreshing learning plans:', err);
+      });
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-100 pt-16">
@@ -658,7 +685,6 @@ const Profile = () => {
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500"></div>
           </div>
         </div>
-        <NavBar />
       </div>
     );
   }
@@ -671,7 +697,6 @@ const Profile = () => {
             <p>{error}</p>
           </div>
         </div>
-        <NavBar />
       </div>
     );
   }
@@ -681,7 +706,8 @@ const Profile = () => {
   return (
     <div className="min-h-screen bg-gray-100 pt-16">
       <div className="container mx-auto px-4 py-8">
-        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+        {/* Main Profile Card */}
+        <div className="bg-white rounded-lg shadow-lg overflow-hidden mb-8">
           {/* Cover Photo */}
           <div className="h-48 bg-gray-200 relative">
             {profileUser?.coverPhoto && (
@@ -760,15 +786,18 @@ const Profile = () => {
             </div>
 
             {/* Posts Section */}
-            <div className="mt-8">
+            <div className="mt-8 px-6">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-semibold text-gray-900">Posts</h2>
                 {isOwnProfile && (
                   <button
                     onClick={handleCreatePost}
-                    className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500"
+                    className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 flex items-center space-x-2"
                   >
-                    Create New Post
+                    <span>Create New Post</span>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                    </svg>
                   </button>
                 )}
               </div>
@@ -872,23 +901,14 @@ const Profile = () => {
                     ))}
                   </div>
                   {!showAllPosts && userPosts.length > 2 && (
-                    <div className="flex justify-center mt-8">
+                    <div className="flex justify-end mt-8">
                       <button
                         onClick={() => setShowAllPosts(true)}
-                        className="flex items-center justify-center w-12 h-12 bg-white text-green-600 rounded-full border-2 border-green-500 hover:bg-green-50 transition-all duration-300 shadow-sm hover:shadow-md hover:scale-110"
+                        className="text-green-600 hover:text-green-700 text-sm font-medium flex items-center space-x-1"
                       >
-                        <svg 
-                          className="w-6 h-6" 
-                          fill="none" 
-                          stroke="currentColor" 
-                          viewBox="0 0 24 24"
-                        >
-                          <path 
-                            strokeLinecap="round" 
-                            strokeLinejoin="round" 
-                            strokeWidth="2" 
-                            d="M9 5l7 7-7 7"
-                          />
+                        <span>See More</span>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
                         </svg>
                       </button>
                     </div>
@@ -898,7 +918,103 @@ const Profile = () => {
             </div>
           </div>
         </div>
+
+        {/* Learning Plan Card - Separate Container */}
+        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+          <div className="p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-semibold text-gray-900">Learning Plan</h2>
+              <button
+                onClick={handleCreatePlan}
+                className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors flex items-center space-x-2"
+              >
+                <span>Create Plan</span>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                </svg>
+              </button>
+            </div>
+            
+            {userLearningPlans.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-gray-500 mb-4">No learning plans created yet</p>
+                <button
+                  onClick={handleCreatePlan}
+                  className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+                >
+                  Create Your First Plan
+                </button>
+              </div>
+            ) : (
+              <div className="bg-gray-50 rounded-lg p-6 border border-gray-100">
+                {(() => {
+                  // Sort plans by creation date (newest first) and get the most recent one
+                  const sortedPlans = [...userLearningPlans].sort((a, b) => 
+                    new Date(b.createdAt) - new Date(a.createdAt)
+                  );
+                  const mostRecentPlan = sortedPlans[0];
+                  
+                  return (
+                    <>
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="font-semibold text-gray-900 text-lg">{mostRecentPlan.title}</h3>
+                          <p className="text-sm text-gray-500 mt-1">
+                            Created {new Date(mostRecentPlan.createdAt).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <span className={`px-3 py-1 rounded-full text-sm ${
+                          mostRecentPlan.status === 'COMPLETED' 
+                            ? 'bg-green-100 text-green-800'
+                            : mostRecentPlan.status === 'IN_PROGRESS'
+                            ? 'bg-blue-100 text-blue-800'
+                            : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {mostRecentPlan.status.replace('_', ' ')}
+                        </span>
+                      </div>
+                      <div className="mt-4">
+                        <div className="w-full bg-gray-200 rounded-full h-2.5">
+                          <div 
+                            className={`h-2.5 rounded-full ${
+                              mostRecentPlan.status === 'COMPLETED' 
+                                ? 'bg-green-500'
+                                : mostRecentPlan.status === 'IN_PROGRESS'
+                                ? 'bg-blue-500'
+                                : 'bg-gray-500'
+                            }`} 
+                            style={{ width: `${mostRecentPlan.progress || 0}%` }}
+                          ></div>
+                        </div>
+                        <div className="flex justify-between items-center mt-2">
+                          <p className="text-sm text-gray-600">{mostRecentPlan.progress || 0}% Complete</p>
+                          <button
+                            onClick={() => navigate('/learning-plan')}
+                            className="text-green-600 hover:text-green-700 text-sm font-medium flex items-center space-x-1"
+                          >
+                            <span>See More</span>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
+
+      {/* Create Plan Modal */}
+      {showCreatePlanForm && (
+        <CreateNewPlan 
+          setShowForm={setShowCreatePlanForm} 
+          onPlanCreated={handlePlanCreated}
+        />
+      )}
 
       {/* Modals */}
       <CreateEditModal
@@ -940,7 +1056,6 @@ const Profile = () => {
         }}
         postId={selectedPost?.id}
       />
-      <NavBar />
     </div>
   );
 };
