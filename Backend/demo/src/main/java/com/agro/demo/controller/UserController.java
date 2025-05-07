@@ -192,4 +192,58 @@ public class UserController {
         logger.info("Found {} total users", users.size());
         return ResponseEntity.ok(users);
     }
+
+
+
+
+@PostMapping("/follow/{targetUserId}")
+public ResponseEntity<?> followUser(@RequestHeader("Authorization") String authHeader,
+                                    @PathVariable String targetUserId) {
+    String token = authHeader.replace("Bearer ", "");
+    String email = jwtUtil.getEmailFromToken(token);
+
+    Optional<User> optionalCurrentUser = userRepository.findByEmail(email);
+    Optional<User> optionalTargetUser = userRepository.findById(targetUserId);
+
+    if (!optionalCurrentUser.isPresent() || !optionalTargetUser.isPresent()) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
+    }
+
+    User currentUser = optionalCurrentUser.get();
+    User targetUser = optionalTargetUser.get();
+
+    currentUser.getFollowing().add(targetUserId);
+    targetUser.getFollowers().add(currentUser.getId());
+
+    userRepository.save(currentUser);
+    userRepository.save(targetUser);
+
+    return ResponseEntity.ok("Followed successfully");
+}
+
+@PostMapping("/unfollow/{targetUserId}")
+public ResponseEntity<?> unfollowUser(@RequestHeader("Authorization") String authHeader,
+                                      @PathVariable String targetUserId) {
+    String token = authHeader.replace("Bearer ", "");
+    String email = jwtUtil.getEmailFromToken(token);
+
+    Optional<User> optionalCurrentUser = userRepository.findByEmail(email);
+    Optional<User> optionalTargetUser = userRepository.findById(targetUserId);
+
+    if (!optionalCurrentUser.isPresent() || !optionalTargetUser.isPresent()) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
+    }
+
+    User currentUser = optionalCurrentUser.get();
+    User targetUser = optionalTargetUser.get();
+
+    currentUser.getFollowing().remove(targetUserId);
+    targetUser.getFollowers().remove(currentUser.getId());
+
+    userRepository.save(currentUser);
+    userRepository.save(targetUser);
+
+    return ResponseEntity.ok("Unfollowed successfully");
+}
+
 }

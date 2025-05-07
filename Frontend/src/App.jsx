@@ -7,10 +7,12 @@ import Home from './pages/Home';
 import UpdateProfile from './pages/UpdateProfile';
 import Profile from './pages/Profile';
 import ProtectedRoute from './components/ProtectedRoute';
+import Inbox from './components/Inbox';
+import ChatWindow from './components/ChatWindow';
+import ConnectionsPage from './components/ConnectionPage';
 
 // Placeholder components for new routes
 const Connections = () => <div className="min-h-screen bg-gray-100 pb-20 p-4">Connections Page</div>;
-const ChatBox = () => <div className="min-h-screen bg-gray-100 pb-20 p-4">ChatBox Page</div>;
 
 function App() {
   return (
@@ -20,9 +22,10 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
-          <Route path="/connections" element={<ProtectedRoute><Connections /></ProtectedRoute>} />
-          <Route path="/chat" element={<ProtectedRoute><ChatBox /></ProtectedRoute>} />
-          <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+          <Route path="/connections" element={<ProtectedRoute><ConnectionsPage /></ProtectedRoute>} />
+          <Route path="/chat" element={<ProtectedRoute><Inbox /></ProtectedRoute>} />
+          <Route path="/chat/:userId" element={<ProtectedRoute><ChatWindow /></ProtectedRoute>} />
+          <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />       
           <Route path="/profile/:userId" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="/update-profile" element={<ProtectedRoute><UpdateProfile /></ProtectedRoute>} />
           <Route path="/" element={<Navigate to="/login" replace />} />
