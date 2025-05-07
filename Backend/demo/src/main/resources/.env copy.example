@@ -1,0 +1,10 @@
+# MongoDB Configuration
+MONGODB_URI=mongodb+srv://username:password@your-cluster.mongodb.net/your-database
+
+# Google OAuth Configuration
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+
+# JWT Configuration
+JWT_SECRET_KEY=your-jwt-secret
+
