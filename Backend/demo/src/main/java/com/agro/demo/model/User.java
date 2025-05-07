@@ -48,6 +48,10 @@ public class User {
         this.roles.add("ROLE_USER");
     }
 
+
+       private Set<String> followers = new HashSet<>();
+       private Set<String> following = new HashSet<>();
+
     // Getters and Setters
 
     public String getId() {

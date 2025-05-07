@@ -10,6 +10,10 @@ import ProtectedRoute from './components/ProtectedRoute';
 import LearningPlanPage from './pages/LearningPlanPage';
 import UpdateAndDeleteLearningPlan from './pages/UpdateAndDeleteLearningPlan';
 import NavBar from './components/NavBar';
+import Inbox from './components/Inbox';
+import ChatWindow from './components/ChatWindow';
+import ConnectionsPage from './components/ConnectionPage';
+
 
 // Placeholder components for new routes with compact layout
 const Connections = () => (
@@ -59,20 +63,9 @@ function App() {
               </Layout>
             </ProtectedRoute>
           } />
-          <Route path="/connections" element={
-            <ProtectedRoute>
-              <Layout>
-                <Connections />
-              </Layout>
-            </ProtectedRoute>
-          } />
-          <Route path="/chat" element={
-            <ProtectedRoute>
-              <Layout>
-                <ChatBox />
-              </Layout>
-            </ProtectedRoute>
-          } />
+          
+
+          
           <Route path="/profile" element={
             <ProtectedRoute>
               <Layout>
@@ -102,6 +95,11 @@ function App() {
             </ProtectedRoute>
           } />
           <Route path="/" element={<Navigate to="/login" replace />} />
+
+
+          <Route path="/connections" element={<ProtectedRoute><ConnectionsPage /></ProtectedRoute>} />
+          <Route path="/chat" element={<ProtectedRoute><Inbox /></ProtectedRoute>} />
+          <Route path="/chat/:userId" element={<ProtectedRoute><ChatWindow /></ProtectedRoute>} />
         </Routes>
       </Router>
     </AuthProvider>

@@ -11,9 +11,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/messages")
@@ -77,7 +79,24 @@ public class MessageController {
         List<Message> messages = messageRepository.findBySenderIdAndReceiverId(currentUserId, userId);
         messages.addAll(messageRepository.findBySenderIdAndReceiverId(userId, currentUserId));
 
-        return ResponseEntity.ok(messages);
+        // Create a map to store user details
+        Map<String, User> userDetails = new HashMap<>();
+        
+        // Add current user details
+        userDetails.put(currentUserId, currentUserOptional.get());
+        
+        // Add other user details
+        Optional<User> otherUserOptional = userRepository.findById(userId);
+        if (otherUserOptional.isPresent()) {
+            userDetails.put(userId, otherUserOptional.get());
+        }
+
+        // Create response with messages and user details
+        Map<String, Object> response = new HashMap<>();
+        response.put("messages", messages);
+        response.put("userDetails", userDetails);
+
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/unread/count")
@@ -135,9 +154,26 @@ public class MessageController {
         List<Message> sentMessages = messageRepository.findBySenderId(currentUserId);
         List<Message> receivedMessages = messageRepository.findByReceiverId(currentUserId);
 
+        // Create a map to store user details
+        Map<String, User> userDetails = new HashMap<>();
+        
+        // Add current user details
+        userDetails.put(currentUserId, currentUserOptional.get());
+        
+        // Collect all unique user IDs from sent and received messages
+        Set<String> userIds = new HashSet<>();
+        sentMessages.forEach(msg -> userIds.add(msg.getReceiverId()));
+        receivedMessages.forEach(msg -> userIds.add(msg.getSenderId()));
+        
+        // Fetch details for all users involved in conversations
+        userIds.forEach(userId -> {
+            userRepository.findById(userId).ifPresent(user -> userDetails.put(userId, user));
+        });
+
         Map<String, Object> response = new HashMap<>();
         response.put("sentMessages", sentMessages);
         response.put("receivedMessages", receivedMessages);
+        response.put("userDetails", userDetails);
 
         return ResponseEntity.ok(response);
     }
