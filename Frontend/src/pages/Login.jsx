@@ -2,8 +2,6 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { login } from '../services/api';
-import PageLayout from '../components/PageLayout';
-import { Mail, Lock, LogIn } from 'lucide-react';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -13,7 +11,6 @@ const Login = () => {
     password: '',
   });
   const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
 
   const handleChange = (e) => {
     setFormData({
@@ -24,17 +21,25 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setIsLoading(true);
-    setError('');
-    
     try {
       const response = await login(formData.email, formData.password);
       authLogin(response.user, response.token);
+      
+      // Fetch complete user data after successful login
+      const userResponse = await fetch('http://localhost:8081/api/user/me', {
+        headers: {
+          Authorization: `Bearer ${response.token}`,
+        },
+      });
+      
+      if (userResponse.ok) {
+        const userData = await userResponse.json();
+        authLogin(userData, response.token);
+      }
+      
       navigate('/home');
     } catch (err) {
       setError(err.message || 'Login failed');
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -57,94 +62,61 @@ const Login = () => {
   };
 
   return (
-    <PageLayout withPattern={true}>
-      <div className="w-full max-w-md px-4 py-8 animate-fadeIn">
-        <div className="bg-white p-8 rounded-xl shadow-lg border border-gray-100">
-          <div className="text-center mb-6">
-            <h2 className="text-3xl font-bold text-gray-900">Welcome to Agro</h2>
-            <p className="text-gray-600 mt-2">Log in to access your farming community</p>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8">
+        <div className="bg-white p-8 rounded-lg shadow-md">
+          <div className="text-center">
+            <h2 className="text-3xl font-bold text-gray-900">Login</h2>
           </div>
-          
           {error && (
-            <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg relative" role="alert">
+            <div className="mt-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative" role="alert">
               <span className="block sm:inline">{error}</span>
             </div>
           )}
-          
-          <form className="space-y-6" onSubmit={handleSubmit}>
+          <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
             <div className="space-y-4">
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700">
                   Email Address
                 </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Mail className="h-5 w-5 text-gray-400" />
-                  </div>
-                  <input
-                    id="email"
-                    name="email"
-                    type="email"
-                    autoComplete="email"
-                    required
-                    className="input-field pl-10"
-                    value={formData.email}
-                    onChange={handleChange}
-                  />
-                </div>
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  className="input-field mt-1"
+                  value={formData.email}
+                  onChange={handleChange}
+                />
               </div>
-              
               <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                    Password
-                  </label>
-                  <a href="#" className="text-sm text-green-700 hover:text-green-600">
-                    Forgot password?
-                  </a>
-                </div>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Lock className="h-5 w-5 text-gray-400" />
-                  </div>
-                  <input
-                    id="password"
-                    name="password"
-                    type="password"
-                    autoComplete="current-password"
-                    required
-                    className="input-field pl-10"
-                    value={formData.password}
-                    onChange={handleChange}
-                  />
-                </div>
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                  Password
+                </label>
+                <input
+                  id="password"
+                  name="password"
+                  type="password"
+                  autoComplete="current-password"
+                  required
+                  className="input-field mt-1"
+                  value={formData.password}
+                  onChange={handleChange}
+                />
               </div>
             </div>
 
             <div>
               <button
                 type="submit"
-                className="btn-primary w-full flex items-center justify-center"
-                disabled={isLoading}
+                className="btn-primary w-full"
               >
-                {isLoading ? (
-                  <span className="flex items-center">
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Processing...
-                  </span>
-                ) : (
-                  <span className="flex items-center">
-                    <LogIn className="h-5 w-5 mr-2" />
-                    Sign In
-                  </span>
-                )}
+                Sign In
               </button>
             </div>
 
-            <div className="relative my-6">
+            <div className="relative">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-gray-300"></div>
               </div>
@@ -157,9 +129,9 @@ const Login = () => {
               <button
                 type="button"
                 onClick={handleGoogleLogin}
-                className="social-login-btn group"
+                className="w-full flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
               >
-                <svg className="w-5 h-5 mr-2 text-gray-700 group-hover:text-red-500 transition-colors" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
                   <path
                     fill="currentColor"
                     d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -182,9 +154,9 @@ const Login = () => {
               <button
                 type="button"
                 onClick={handleFacebookLogin}
-                className="social-login-btn group"
+                className="w-full flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
               >
-                <svg className="w-5 h-5 mr-2 text-gray-700 group-hover:text-blue-600 transition-colors" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="#1877F2">
                   <path
                     fill="currentColor"
                     d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"
@@ -194,23 +166,16 @@ const Login = () => {
               </button>
             </div>
 
-            <div className="text-center mt-6">
-              <p className="text-sm text-gray-600">
-                Don't have an account?{' '}
-                <Link to="/signup" className="text-green-700 hover:text-green-600 font-medium">
-                  Sign Up
-                </Link>
-              </p>
+            <div className="text-center">
+              <Link to="/signup" className="text-sm text-green-600 hover:text-green-800">
+                Don't have an account? Sign Up
+              </Link>
             </div>
           </form>
         </div>
-        
-        <div className="mt-8 text-center text-xs text-gray-500">
-          <p>© 2025 Agro. All rights reserved.</p>
-        </div>
       </div>
-    </PageLayout>
+    </div>
   );
 };
 
-export default Login;
+export default Login; 

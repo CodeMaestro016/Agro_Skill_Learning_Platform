@@ -10,6 +10,7 @@ import java.util.Set;
 @Data
 @Document(collection = "users")
 public class User {
+
     @Id
     private String id;
     private String email;
@@ -21,6 +22,13 @@ public class User {
     private String providerId;
     private Set<String> roles = new HashSet<>();
     private boolean enabled = true;
+
+    // Additional profile fields
+    private String about;
+    private String address;
+    private String contactNumber;
+    private String coverPhoto;   // New field for cover photo URL
+    private String profilePhoto; // New field for profile photo URL
 
     // Default constructor
     public User() {
@@ -41,6 +49,7 @@ public class User {
     }
 
     // Getters and Setters
+
     public String getId() {
         return id;
     }
@@ -134,4 +143,44 @@ public class User {
     public void setLastName(String lastName) {
         this.lastName = lastName;
     }
-} 
+
+    public String getAbout() {
+        return about;
+    }
+
+    public void setAbout(String about) {
+        this.about = about;
+    }
+
+    public String getAddress() {
+        return address;
+    }
+
+    public void setAddress(String address) {
+        this.address = address;
+    }
+
+    public String getContactNumber() {
+        return contactNumber;
+    }
+
+    public void setContactNumber(String contactNumber) {
+        this.contactNumber = contactNumber;
+    }
+
+    public String getCoverPhoto() {
+        return coverPhoto;
+    }
+
+    public void setCoverPhoto(String coverPhoto) {
+        this.coverPhoto = coverPhoto;
+    }
+
+    public String getProfilePhoto() {
+        return profilePhoto;
+    }
+
+    public void setProfilePhoto(String profilePhoto) {
+        this.profilePhoto = profilePhoto;
+    }
+}

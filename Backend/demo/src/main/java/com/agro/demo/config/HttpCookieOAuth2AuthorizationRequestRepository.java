@@ -10,6 +10,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.Base64;
 import java.util.Optional;
+import java.io.ByteArrayInputStream;
+import java.io.ObjectInputStream;
+import java.io.IOException;
 
 @Component
 public class HttpCookieOAuth2AuthorizationRequestRepository implements AuthorizationRequestRepository<OAuth2AuthorizationRequest> {
@@ -79,8 +82,12 @@ public class HttpCookieOAuth2AuthorizationRequestRepository implements Authoriza
     }
 
     private OAuth2AuthorizationRequest deserialize(String cookie) {
-        return (OAuth2AuthorizationRequest) SerializationUtils.deserialize(
-            Base64.getUrlDecoder().decode(cookie)
-        );
+        try {
+            byte[] bytes = Base64.getUrlDecoder().decode(cookie);
+            ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(bytes));
+            return (OAuth2AuthorizationRequest) ois.readObject();
+        } catch (IOException | ClassNotFoundException e) {
+            throw new IllegalStateException("Failed to deserialize OAuth2AuthorizationRequest.", e);
+        }
     }
 } 

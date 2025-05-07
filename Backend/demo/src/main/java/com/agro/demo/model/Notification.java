@@ -1,46 +1,35 @@
 package com.agro.demo.model;
 
+import lombok.Data;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
+import java.time.LocalDateTime;
 
-import java.util.Date;
-
+@Data
 @Document(collection = "notifications")
 public class Notification {
-
     @Id
     private String id;
-
-    private String type;
-    private String senderId;
-    private String receiverId;
+    private String userId; // recipient of the notification
+    private String actorId; // user who performed the action
     private String postId;
-    private String message;
-    private boolean read;
-    private Date createdAt;
+    private String type; // "LIKE" or "COMMENT"
+    private String content; // for comments, store the comment content
+    private boolean isRead;
+    private LocalDateTime createdAt;
 
-    // 🔧 Getters and Setters
-    public String getId() { return id; }
-    public void setId(String id) { this.id = id; }
+    public Notification() {
+        this.createdAt = LocalDateTime.now();
+        this.isRead = false;
+    }
 
-    public String getType() { return type; }
-    public void setType(String type) { this.type = type; }
-
-    public String getSenderId() { return senderId; }
-    public void setSenderId(String senderId) { this.senderId = senderId; }
-
-    public String getReceiverId() { return receiverId; }
-    public void setReceiverId(String receiverId) { this.receiverId = receiverId; }
-
-    public String getPostId() { return postId; }
-    public void setPostId(String postId) { this.postId = postId; }
-
-    public String getMessage() { return message; }
-    public void setMessage(String message) { this.message = message; }
-
-    public boolean isRead() { return read; }
-    public void setRead(boolean read) { this.read = read; }
-
-    public Date getCreatedAt() { return createdAt; }
-    public void setCreatedAt(Date createdAt) { this.createdAt = createdAt; }
-}
+    public Notification(String userId, String actorId, String postId, String type, String content) {
+        this.userId = userId;
+        this.actorId = actorId;
+        this.postId = postId;
+        this.type = type;
+        this.content = content;
+        this.createdAt = LocalDateTime.now();
+        this.isRead = false;
+    }
+} 

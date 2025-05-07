@@ -2,23 +2,35 @@ spring.application.name=demo
 
 # OAuth2 Configuration
 # Google OAuth2 Configuration
-spring.security.oauth2.client.registration.google.client-id=your-google-client-id
-spring.security.oauth2.client.registration.google.client-secret=your-google-client-secret
+spring.security.oauth2.client.registration.google.client-id=${GOOGLE_CLIENT_ID}
+spring.security.oauth2.client.registration.google.client-secret=${GOOGLE_CLIENT_SECRET}
 spring.security.oauth2.client.registration.google.scope=profile,email
 
-spring.security.oauth2.client.registration.facebook.client-id=your-facebook-client-id
-spring.security.oauth2.client.registration.facebook.client-secret=your-facebook-client-secret
+spring.security.oauth2.client.registration.facebook.client-id=${FACEBOOK_CLIENT_ID}
+spring.security.oauth2.client.registration.facebook.client-secret=${FACEBOOK_CLIENT_SECRET}
 spring.security.oauth2.client.registration.facebook.scope=public_profile,email
 
 # MongoDB Configuration
-spring.data.mongodb.uri=mongodb+srv://username:password@your-cluster-url/your-database?retryWrites=true&w=majority
+spring.data.mongodb.uri=${MONGODB_URI}
 
 # JWT Configuration
-jwt.secret=your-jwt-secret-key
+jwt.secret=${JWT_SECRET_KEY}
 jwt.expiration=86400000
 
 # Server Configuration
-server.port=8080
+server.port=8081
 
 # Logging Configuration
-logging.level.org.springframework.data.mongodb=DEBUG 
+logging.level.org.springframework.data.mongodb=DEBUG
+
+jwt.secret=YourSuperSecureSecretKeyThatIsAtLeast32BytesLong123!
+
+# File Upload Configuration
+spring.servlet.multipart.max-file-size=100MB
+spring.servlet.multipart.max-request-size=100MB
+
+
+#Cloudinary
+cloudinary.cloud_name=drhyhwgbh
+cloudinary.api_key=495356359257644
+cloudinary.api_secret=sGq78HtWMTZ-gRsOF03RYvUFY-8
