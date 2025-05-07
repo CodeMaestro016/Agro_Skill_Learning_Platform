@@ -1,5 +1,5 @@
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { getFeed } from '../services/api';
 import NavBar from '../components/NavBar';
@@ -9,6 +9,7 @@ import NotificationCenter from '../components/NotificationCenter';
 const Home = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   
   // Feed state
   const [feed, setFeed] = useState([]);
@@ -16,6 +17,7 @@ const Home = () => {
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(0);
   const observer = useRef();
+  const postRefs = useRef({});
 
   const loadFeed = async () => {
     if (loading) return;
@@ -41,6 +43,30 @@ const Home = () => {
   useEffect(() => {
     loadFeed();
   }, []);
+
+  // Handle postId query parameter
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const postId = searchParams.get('postId');
+    
+    if (postId) {
+      // If the post is not in the current feed, load more posts
+      const postExists = feed.some(post => post.id === postId);
+      if (!postExists && hasMore) {
+        loadFeed();
+      }
+      
+      // Scroll to the post after a short delay to ensure it's rendered
+      setTimeout(() => {
+        const postElement = postRefs.current[postId];
+        if (postElement) {
+          postElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          // Remove the query parameter from the URL
+          navigate(location.pathname, { replace: true });
+        }
+      }, 500);
+    }
+  }, [feed, location.search, hasMore]);
 
   const loadMoreFeed = useCallback(() => {
     if (!loading && hasMore) {
@@ -73,7 +99,12 @@ const Home = () => {
             {feed.map((post, index) => (
               <div
                 key={`home-post-${post.id}-${post.createdAt}-${index}`}
-                ref={index === feed.length - 1 ? lastPostElementRef : null}
+                ref={el => {
+                  if (index === feed.length - 1) {
+                    lastPostElementRef(el);
+                  }
+                  postRefs.current[post.id] = el;
+                }}
               >
                 <PostCard post={post} isOwnProfile={false} />
               </div>

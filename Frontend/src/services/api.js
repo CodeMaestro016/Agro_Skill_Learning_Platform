@@ -269,9 +269,9 @@ export const getComments = async (postId) => {
   }
 };
 
-export const addComment = async (postId, content) => {
+export const addComment = async (postId, content, parentCommentId = null) => {
   try {
-    const response = await api.post(`/interactivity/comments/${postId}`, { content });
+    const response = await api.post(`/interactivity/comments/${postId}`, { content, parentCommentId });
     return response.data;
   } catch (error) {
     console.error('Error adding comment:', error.response?.data || error.message);
@@ -294,6 +294,26 @@ export const deleteComment = async (commentId) => {
     await api.delete(`/interactivity/comments/${commentId}`);
   } catch (error) {
     console.error('Error deleting comment:', error.response?.data || error.message);
+    throw error.response?.data || error.message;
+  }
+};
+
+export const toggleCommentLike = async (commentId) => {
+  try {
+    const response = await api.post(`/interactivity/comments/${commentId}/like`);
+    return response.data;
+  } catch (error) {
+    console.error('Error toggling comment like:', error.response?.data || error.message);
+    throw error.response?.data || error.message;
+  }
+};
+
+export const getCommentReplies = async (commentId) => {
+  try {
+    const response = await api.get(`/interactivity/comments/${commentId}/replies`);
+    return response.data;
+  } catch (error) {
+    console.error('Error getting comment replies:', error.response?.data || error.message);
     throw error.response?.data || error.message;
   }
 };

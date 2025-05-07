@@ -85,7 +85,8 @@ public class InteractivityController {
         try {
             String userId = getUserIdFromToken(token.replace("Bearer ", ""));
             String content = request.get("content");
-            Comment comment = interactivityService.addComment(postId, userId, content);
+            String parentCommentId = request.get("parentCommentId");
+            Comment comment = interactivityService.addComment(postId, userId, content, parentCommentId);
             return ResponseEntity.ok(comment);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -137,6 +138,31 @@ public class InteractivityController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body("Error getting comments: " + e.getMessage());
+        }
+    }
+
+    @PostMapping("/comments/{commentId}/like")
+    public ResponseEntity<?> toggleCommentLike(
+            @PathVariable String commentId,
+            @RequestHeader("Authorization") String token) {
+        try {
+            String userId = getUserIdFromToken(token.replace("Bearer ", ""));
+            Comment comment = interactivityService.toggleCommentLike(commentId, userId);
+            return ResponseEntity.ok(comment);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body("Error toggling comment like: " + e.getMessage());
+        }
+    }
+
+    @GetMapping("/comments/{commentId}/replies")
+    public ResponseEntity<?> getCommentReplies(@PathVariable String commentId) {
+        try {
+            List<Comment> replies = interactivityService.getCommentReplies(commentId);
+            return ResponseEntity.ok(replies);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body("Error getting comment replies: " + e.getMessage());
         }
     }
 

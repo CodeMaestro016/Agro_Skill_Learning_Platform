@@ -710,16 +710,16 @@ const Profile = () => {
               <p className="text-gray-600 mb-4">{profileUser?.email}</p>
               {isOwnProfile && (
                 <button
-                onClick={() => {
-                  console.log('Edit Profile button clicked');
-                  console.log('Current user:', currentUser);
-                  console.log('Is own profile:', isOwnProfile);
-                  navigate('/update-profile');
-                }}
-                className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500"
-              >
-                Edit Profile
-              </button>
+                  onClick={() => {
+                    console.log('Edit Profile button clicked');
+                    console.log('Current user:', currentUser);
+                    console.log('Is own profile:', isOwnProfile);
+                    navigate('/update-profile');
+                  }}
+                  className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500"
+                >
+                  Edit Profile
+                </button>
               )}
             </div>
           </div>

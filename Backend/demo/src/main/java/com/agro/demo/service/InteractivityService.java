@@ -8,6 +8,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.ArrayList;
 
 @Service
 public class InteractivityService {
@@ -67,14 +70,29 @@ public class InteractivityService {
 
     // Comment functionality
     @Transactional
-    public Comment addComment(String postId, String userId, String content) {
-        Comment comment = new Comment(postId, userId, content);
+    public Comment addComment(String postId, String userId, String content, String parentCommentId) {
+        Comment comment = new Comment(postId, userId, content, parentCommentId);
         commentRepository.save(comment);
         
-        // Create notification for post owner
+        // Create notification for post owner or comment owner if it's a reply
         Post post = postRepository.findById(postId).orElseThrow();
-        if (!post.getUserId().equals(userId)) {
-            User actor = userRepository.findById(userId).orElseThrow();
+        User actor = userRepository.findById(userId).orElseThrow();
+        
+        if (parentCommentId != null) {
+            // It's a reply to a comment
+            Comment parentComment = commentRepository.findById(parentCommentId).orElseThrow();
+            if (!parentComment.getUserId().equals(userId)) {
+                Notification notification = new Notification(
+                    parentComment.getUserId(),
+                    userId,
+                    postId,
+                    "REPLY",
+                    actor.getFirstName() + " " + actor.getLastName() + " replied to your comment: " + content
+                );
+                notificationRepository.save(notification);
+            }
+        } else if (!post.getUserId().equals(userId)) {
+            // It's a top-level comment
             Notification notification = new Notification(
                 post.getUserId(),
                 userId,
@@ -119,7 +137,86 @@ public class InteractivityService {
     }
 
     public List<Comment> getComments(String postId) {
-        return commentRepository.findByPostIdOrderByCreatedAtDesc(postId);
+        List<Comment> comments = commentRepository.findByPostIdOrderByCreatedAtDesc(postId);
+        
+        // Populate user information for each comment
+        for (Comment comment : comments) {
+            User user = userRepository.findById(comment.getUserId())
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+            comment.setUserName(user.getFirstName() + " " + user.getLastName());
+            comment.setUserProfilePhoto(user.getProfilePhoto());
+        }
+        
+        // Organize comments into a tree structure
+        Map<String, List<Comment>> commentMap = new HashMap<>();
+        List<Comment> rootComments = new ArrayList<>();
+        
+        for (Comment comment : comments) {
+            if (comment.getParentCommentId() == null) {
+                rootComments.add(comment);
+            } else {
+                commentMap.computeIfAbsent(comment.getParentCommentId(), k -> new ArrayList<>())
+                    .add(comment);
+            }
+        }
+        
+        // Sort root comments by creation date
+        rootComments.sort((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()));
+        
+        // Sort replies by creation date
+        for (List<Comment> replies : commentMap.values()) {
+            replies.sort((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()));
+        }
+        
+        return rootComments;
+    }
+
+    public List<Comment> getCommentReplies(String commentId) {
+        Comment parentComment = commentRepository.findById(commentId)
+            .orElseThrow(() -> new IllegalArgumentException("Comment not found"));
+            
+        List<Comment> replies = commentRepository.findByParentCommentIdOrderByCreatedAtDesc(commentId);
+        
+        // Populate user information for each reply
+        for (Comment reply : replies) {
+            User user = userRepository.findById(reply.getUserId())
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+            reply.setUserName(user.getFirstName() + " " + user.getLastName());
+            reply.setUserProfilePhoto(user.getProfilePhoto());
+        }
+        
+        return replies;
+    }
+
+    @Transactional
+    public Comment toggleCommentLike(String commentId, String userId) {
+        Comment comment = commentRepository.findById(commentId)
+            .orElseThrow(() -> new IllegalArgumentException("Comment not found"));
+            
+        if (comment.getLikedBy().contains(userId)) {
+            // Unlike
+            comment.getLikedBy().remove(userId);
+            comment.setLikeCount(comment.getLikeCount() - 1);
+        } else {
+            // Like
+            comment.getLikedBy().add(userId);
+            comment.setLikeCount(comment.getLikeCount() + 1);
+            
+            // Create notification for comment owner
+            if (!comment.getUserId().equals(userId)) {
+                User actor = userRepository.findById(userId).orElseThrow();
+                Notification notification = new Notification(
+                    comment.getUserId(),
+                    userId,
+                    comment.getPostId(),
+                    "COMMENT_LIKE",
+                    actor.getFirstName() + " " + actor.getLastName() + " liked your comment"
+                );
+                notificationRepository.save(notification);
+            }
+        }
+        
+        return commentRepository.save(comment);
     }
 
     // Notification functionality

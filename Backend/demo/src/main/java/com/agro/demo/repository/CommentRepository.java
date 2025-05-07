@@ -8,4 +8,5 @@ public interface CommentRepository extends MongoRepository<Comment, String> {
     List<Comment> findByPostIdOrderByCreatedAtDesc(String postId);
     List<Comment> findByUserId(String userId);
     void deleteByPostId(String postId);
+    List<Comment> findByParentCommentIdOrderByCreatedAtDesc(String parentCommentId);
 } 
