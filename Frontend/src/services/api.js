@@ -300,4 +300,76 @@ export const updateStepStatus = async (planId, stepIndex, userId, status) => {
   }
 };
 
+
+
+// Save post functions
+export const savePost = async (postId) => {
+  try {
+    console.log('Saving post:', postId);
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error('Authentication required');
+    }
+    const userId = JSON.parse(localStorage.getItem('user')).id;
+    const response = await api.post(`/auth/posts/${postId}/save?userId=${userId}`, null, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    console.log('Save post response:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Error saving post:', error.response?.data || error.message);
+    throw error.response?.data || error.message;
+  }
+};
+
+export const unsavePost = async (postId) => {
+  try {
+    console.log('Unsaving post:', postId);
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error('Authentication required');
+    }
+    const userId = JSON.parse(localStorage.getItem('user')).id;
+    const response = await api.delete(`/auth/posts/${postId}/save?userId=${userId}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    console.log('Unsave post response:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Error unsaving post:', error.response?.data || error.message);
+    throw error.response?.data || error.message;
+  }
+};
+
+export const getSavedPosts = async () => {
+  try {
+    console.log('Fetching saved posts...');
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error('Authentication required');
+    }
+    const userId = JSON.parse(localStorage.getItem('user')).id;
+    const response = await api.get(`/auth/posts/saved?userId=${userId}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    console.log('Saved posts response:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching saved posts:', error.response?.data || error.message);
+    throw error.response?.data || error.message;
+  }
+};
+
+
+
+
 export default api;

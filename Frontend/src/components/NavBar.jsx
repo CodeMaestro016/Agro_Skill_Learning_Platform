@@ -8,9 +8,7 @@ const NavBar = () => {
   const location = useLocation();
   const { user, logout } = useAuth();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const dropdownRef = useRef(null);
-  const mobileMenuRef = useRef(null);
 
   const isActive = (path) => {
     return location.pathname === path;
@@ -20,7 +18,6 @@ const NavBar = () => {
     { path: '/home', label: 'Home', icon: '🏠' },
     { path: '/connections', label: 'Connections', icon: '👥' },
     { path: '/chat', label: 'ChatBox', icon: '💬' },
-    { path: '/learning-plan', label: 'Learning Plan', icon: '📚' },
   ];
 
   const handleLogout = () => {
@@ -28,14 +25,11 @@ const NavBar = () => {
     navigate('/login');
   };
 
-  // Close dropdowns when clicking outside
+  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsDropdownOpen(false);
-      }
-      if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target)) {
-        setIsMobileMenuOpen(false);
       }
     };
 
@@ -50,36 +44,14 @@ const NavBar = () => {
       <div className="max-w-screen-xl mx-auto px-4">
         <div className="flex justify-between items-center h-20">
           {/* Logo/Brand */}
-          <div className="flex items-center">
+          <div className="flex items-center -ml-20">
             <Logo 
               onClick={() => navigate('/home')}
               className="hover:opacity-90 transition-opacity"
             />
           </div>
 
-          {/* Mobile Menu Button */}
-          <button
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="md:hidden p-2 rounded-lg hover:bg-gray-100 focus:outline-none"
-          >
-            <svg
-              className="w-6 h-6 text-gray-600"
-              fill="none"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              {isMobileMenuOpen ? (
-                <path d="M6 18L18 6M6 6l12 12" />
-              ) : (
-                <path d="M4 6h16M4 12h16M4 18h16" />
-              )}
-            </svg>
-          </button>
-
-          {/* Navigation Links - Desktop */}
+          {/* Navigation Links */}
           <div className="hidden md:flex items-center space-x-8">
             {navItems.map((item) => (
               <button
@@ -98,8 +70,8 @@ const NavBar = () => {
           </div>
 
           {/* Profile Section */}
-          <div className="flex items-center space-x-5">
-            <div className="relative" ref={dropdownRef}>
+          <div className="flex items-center space-x-5 -mr-20">
+            <div className="relative">
               <button
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                 className="flex items-center space-x-2 focus:outline-none"
@@ -139,6 +111,18 @@ const NavBar = () => {
                     <span>Profile</span>
                   </button>
                   <button
+                    onClick={() => {
+                      navigate('/saved');
+                      setIsDropdownOpen(false);
+                    }}
+                    className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-green-50 flex items-center space-x-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                    </svg>
+                    <span>Saved Posts</span>
+                  </button>
+                  <button
                     onClick={handleLogout}
                     className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center space-x-2"
                   >
@@ -152,32 +136,6 @@ const NavBar = () => {
             </div>
           </div>
         </div>
-
-        {/* Mobile Menu */}
-        {isMobileMenuOpen && (
-          <div 
-            ref={mobileMenuRef}
-            className="md:hidden border-t border-gray-200 py-4"
-          >
-            {navItems.map((item) => (
-              <button
-                key={item.path}
-                onClick={() => {
-                  navigate(item.path);
-                  setIsMobileMenuOpen(false);
-                }}
-                className={`w-full flex items-center space-x-2 px-4 py-3 rounded-lg transition-all duration-200 ${
-                  location.pathname === item.path
-                    ? 'text-green-600 bg-green-50'
-                    : 'text-gray-600 hover:text-green-600 hover:bg-green-50'
-                }`}
-              >
-                {item.icon}
-                <span className="text-lg font-medium">{item.label}</span>
-              </button>
-            ))}
-          </div>
-        )}
       </div>
     </nav>
   );
