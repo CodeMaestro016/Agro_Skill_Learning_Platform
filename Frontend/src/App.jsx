@@ -18,6 +18,7 @@ import About from './pages/About';
 import SavedPosts from './pages/SavedPosts';
 import Landing from './pages/Landing';
 import Footer from './components/Footer';
+import OAuth2Callback from './pages/OAuth2Callback';
 
 // Placeholder components for new routes with compact layout
 const Connections = () => (
@@ -58,6 +59,7 @@ function App() {
           <Route path="/about" element={<About />} />
           <Route path="/community" element={<About />} />
           <Route path="/contact" element={<About />} />
+          <Route path="/oauth2/callback" element={<OAuth2Callback />} />
           <Route path="/home" element={
             <ProtectedRoute>
               <Layout>
