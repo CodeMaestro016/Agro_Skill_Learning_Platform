@@ -1,17 +1,28 @@
-import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { login } from '../services/api';
 import Logo from '../components/Logo';
 
 const Login = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login: authLogin } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
   });
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    const urlParams = new URLSearchParams(location.search);
+    const errorParam = urlParams.get('error');
+    if (errorParam) {
+      setError(decodeURIComponent(errorParam));
+    } else if (location.state?.error) {
+      setError(location.state.error);
+    }
+  }, [location]);
 
   const handleChange = (e) => {
     setFormData({
@@ -25,19 +36,6 @@ const Login = () => {
     try {
       const response = await login(formData.email, formData.password);
       authLogin(response.user, response.token);
-      
-      // Fetch complete user data after successful login
-      const userResponse = await fetch('http://localhost:8081/api/user/me', {
-        headers: {
-          Authorization: `Bearer ${response.token}`,
-        },
-      });
-      
-      if (userResponse.ok) {
-        const userData = await userResponse.json();
-        authLogin(userData, response.token);
-      }
-      
       navigate('/home');
     } catch (err) {
       setError(err.message || 'Login failed');
@@ -46,7 +44,7 @@ const Login = () => {
 
   const handleGoogleLogin = async () => {
     try {
-      window.location.href = 'http://localhost:5000/api/auth/google';
+      window.location.href = 'http://localhost:8081/oauth2/authorization/google';
     } catch (err) {
       setError('Google login failed');
     }
@@ -208,4 +206,4 @@ const Login = () => {
   );
 };
 
-export default Login; 
+export default Login;
