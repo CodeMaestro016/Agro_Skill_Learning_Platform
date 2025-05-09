@@ -16,33 +16,31 @@ const ChatWindow = () => {
   const [sendingMessage, setSendingMessage] = useState(false);
   const messagesEndRef = useRef(null);
 
-  useEffect(() => {
-    const fetchMessages = async () => {
-      try {
-        const response = await fetch(`http://localhost:8081/api/messages/conversation/${userId}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setMessages(data.messages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)));
-          
-          // Set other user details from the response
-          if (data.userDetails && data.userDetails[userId]) {
-            setOtherUser(data.userDetails[userId]);
-          }
-        } else {
-          setError('Failed to fetch messages');
+  const fetchMessages = async () => {
+    try {
+      const response = await fetch(`http://localhost:8081/api/messages/conversation/${userId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setMessages(data.messages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)));
+        if (data.userDetails && data.userDetails[userId]) {
+          setOtherUser(data.userDetails[userId]);
         }
-      } catch (error) {
-        setError('Error fetching messages');
-        console.error('Error:', error);
-      } finally {
-        setLoading(false);
+      } else {
+        setError('Failed to fetch messages');
       }
-    };
+    } catch (error) {
+      setError('Error fetching messages');
+      console.error('Error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     const fetchUserDetails = async () => {
       try {
         const response = await fetch(`http://localhost:8081/api/user/${userId}`, {
@@ -80,17 +78,15 @@ const ChatWindow = () => {
     const messageContent = newMessage.trim();
     setNewMessage('');
 
-    // Create a temporary message object
     const tempMessage = {
-      id: Date.now(), // Temporary ID
+      id: Date.now(),
       content: messageContent,
       senderId: user.id,
       receiverId: userId,
       timestamp: new Date().toISOString(),
-      isTemp: true // Flag to identify temporary messages
+      isTemp: true
     };
 
-    // Add the message immediately to the UI
     setMessages(prevMessages => [...prevMessages, tempMessage]);
 
     try {
@@ -106,37 +102,18 @@ const ChatWindow = () => {
         }),
       });
 
-      // Check if the response is ok (status in 200-299 range)
       if (response.ok) {
-        try {
-          const sentMessage = await response.json();
-          // Replace the temporary message with the real one
-          setMessages(prevMessages => 
-            prevMessages.map(msg => 
-              msg.isTemp ? { ...sentMessage } : msg
-            )
-          );
-        } catch (jsonError) {
-          // If we can't parse JSON but the response was ok, the message was sent
-          // Just keep the temporary message
-          console.log('Message sent successfully');
-        }
+        // Refetch messages to ensure sync with server
+        await fetchMessages();
       } else {
-        // Only show error if the response was not ok
         setError('Failed to send message. Please try again.');
-        // Remove the temporary message if sending failed
-        setMessages(prevMessages => 
-          prevMessages.filter(msg => !msg.isTemp)
-        );
-        setNewMessage(messageContent); // Restore the message if sending failed
+        setMessages(prevMessages => prevMessages.filter(msg => !msg.isTemp));
+        setNewMessage(messageContent);
       }
     } catch (error) {
       setError('Error sending message. Please try again.');
-      // Remove the temporary message if sending failed
-      setMessages(prevMessages => 
-        prevMessages.filter(msg => !msg.isTemp)
-      );
-      setNewMessage(messageContent); // Restore the message if sending failed
+      setMessages(prevMessages => prevMessages.filter(msg => !msg.isTemp));
+      setNewMessage(messageContent);
       console.error('Error:', error);
     } finally {
       setSendingMessage(false);
@@ -156,34 +133,15 @@ const ChatWindow = () => {
         }),
       });
 
-      // Check if the response is ok (status in 200-299 range)
       if (response.ok) {
-        try {
-          const updatedMessage = await response.json();
-          // Update the message in the list
-          setMessages(prevMessages => 
-            prevMessages.map(msg => 
-              msg.id === messageId ? { ...msg, content: newContent } : msg
-            )
-          );
-          setEditingMessage(null);
-        } catch (jsonError) {
-          // If we can't parse JSON but the response was ok, the message was updated
-          // Just update the message content
-          setMessages(prevMessages => 
-            prevMessages.map(msg => 
-              msg.id === messageId ? { ...msg, content: newContent } : msg
-            )
-          );
-          setEditingMessage(null);
-        }
+        // Refetch messages to ensure sync with server
+        await fetchMessages();
+        setEditingMessage(null);
       } else {
-        // Only show error if the response was not ok
         try {
           const errorData = await response.json();
           setError(errorData.message || 'Failed to update message');
         } catch (jsonError) {
-          // If we can't parse JSON but the response was not ok
           setError('Failed to update message. Please try again.');
         }
       }
@@ -202,17 +160,14 @@ const ChatWindow = () => {
         },
       });
 
-      // Check if the response is ok (status in 200-299 range)
       if (response.ok) {
-        // Message was deleted successfully
-        setMessages(prevMessages => prevMessages.filter(msg => msg.id !== messageId));
+        // Refetch messages to ensure sync with server
+        await fetchMessages();
       } else {
-        // Only show error if the response was not ok
         try {
           const errorData = await response.json();
           setError(errorData.message || 'Failed to delete message');
         } catch (jsonError) {
-          // If we can't parse JSON but the response was not ok
           setError('Failed to delete message. Please try again.');
         }
       }
@@ -259,7 +214,6 @@ const ChatWindow = () => {
       <div className="pt-16">
         <div className="container mx-auto px-4 py-4">
           <div className="flex flex-col h-[calc(100vh-5rem)] bg-white rounded-lg shadow">
-            {/* Chat Header */}
             <div className="p-4 border-b flex items-center justify-between bg-white">
               <div className="flex items-center space-x-3">
                 <button
@@ -303,7 +257,6 @@ const ChatWindow = () => {
               </div>
             </div>
 
-            {/* Error Message */}
             {error && (
               <div className="bg-red-50 border-l-4 border-red-500 p-4">
                 <div className="flex">
@@ -319,7 +272,6 @@ const ChatWindow = () => {
               </div>
             )}
 
-            {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
               {messages.map((message, index) => {
                 const showDate = index === 0 || 
@@ -342,7 +294,6 @@ const ChatWindow = () => {
                       }`}
                     >
                       <div className="relative group">
-                        {/* Sender Name */}
                         <div className={`mb-1 text-xs font-semibold ${isFromCurrentUser ? 'text-[#22c55e] text-right' : 'text-gray-700 text-left'}`}>
                           {isFromCurrentUser ? 'You' : messageUser ? `${messageUser.firstName} ${messageUser.lastName}` : 'User'}
                         </div>
@@ -394,7 +345,6 @@ const ChatWindow = () => {
                           )}
                         </div>
                         
-                        {/* Message Actions */}
                         {isFromCurrentUser && !editingMessage && (
                           <div className="absolute right-0 top-0 hidden group-hover:flex space-x-2 bg-white rounded-lg shadow-lg p-1">
                             <button
@@ -447,7 +397,6 @@ const ChatWindow = () => {
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Message Input */}
             <form onSubmit={handleSendMessage} className="p-4 border-t bg-white">
               <div className="flex space-x-4">
                 <input
@@ -484,4 +433,4 @@ const ChatWindow = () => {
   );
 };
 
-export default ChatWindow; 
+export default ChatWindow;
