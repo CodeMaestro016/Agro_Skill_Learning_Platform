@@ -6,6 +6,7 @@ import Signup from './pages/Signup';
 import Home from './pages/Home';
 import UpdateProfile from './pages/UpdateProfile';
 import Profile from './pages/Profile';
+import UserProfileView from './components/UserProfileView';
 import ProtectedRoute from './components/ProtectedRoute';
 import LearningPlanPage from './pages/LearningPlanPage';
 import UpdateAndDeleteLearningPlan from './pages/UpdateAndDeleteLearningPlan';
@@ -16,7 +17,7 @@ import ConnectionsPage from './components/ConnectionPage';
 import About from './pages/About';
 import SavedPosts from './pages/SavedPosts';
 import Landing from './pages/Landing';
-
+import Footer from './components/Footer';
 
 // Placeholder components for new routes with compact layout
 const Connections = () => (
@@ -35,12 +36,13 @@ const ChatBox = () => (
   </div>
 );
 
-// Layout component that includes NavBar
+// Layout component that includes NavBar and Footer
 const Layout = ({ children }) => {
   return (
     <div className="min-h-screen bg-gray-100">
       <NavBar />
       {children}
+      <Footer /> {/* Added Footer here */}
     </div>
   );
 };
@@ -70,9 +72,6 @@ function App() {
               </Layout>
             </ProtectedRoute>
           } />
-          
-
-          
           <Route path="/profile" element={
             <ProtectedRoute>
               <Layout>
@@ -83,7 +82,7 @@ function App() {
           <Route path="/profile/:userId" element={
             <ProtectedRoute>
               <Layout>
-                <Profile />
+                <UserProfileView />
               </Layout>
             </ProtectedRoute>
           } />
@@ -103,11 +102,34 @@ function App() {
           } />
           <Route path="/" element={<Navigate to="/login" replace />} />
 
-
-          <Route path="/connections" element={<ProtectedRoute><ConnectionsPage /></ProtectedRoute>} />
-          <Route path="/chat" element={<ProtectedRoute><Inbox /></ProtectedRoute>} />
-          <Route path="/chat/:userId" element={<ProtectedRoute><ChatWindow /></ProtectedRoute>} />
-          <Route path="/saved" element={<ProtectedRoute><SavedPosts /></ProtectedRoute>} />
+          <Route path="/connections" element={
+            <ProtectedRoute>
+              <Layout>
+                <ConnectionsPage />
+              </Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/chat" element={
+            <ProtectedRoute>
+              <Layout>
+                <Inbox />
+              </Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/chat/:userId" element={
+            <ProtectedRoute>
+              <Layout>
+                <ChatWindow />
+              </Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/saved" element={
+            <ProtectedRoute>
+              <Layout>
+                <SavedPosts />
+              </Layout>
+            </ProtectedRoute>
+          } />
         </Routes>
       </Router>
     </AuthProvider>
