@@ -13,6 +13,9 @@ import NavBar from './components/NavBar';
 import Inbox from './components/Inbox';
 import ChatWindow from './components/ChatWindow';
 import ConnectionsPage from './components/ConnectionPage';
+import About from './pages/About';
+import SavedPosts from './pages/SavedPosts';
+import Landing from './pages/Landing';
 
 
 // Placeholder components for new routes with compact layout
@@ -47,8 +50,12 @@ function App() {
     <AuthProvider>
       <Router>
         <Routes>
+          <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/community" element={<About />} />
+          <Route path="/contact" element={<About />} />
           <Route path="/home" element={
             <ProtectedRoute>
               <Layout>
@@ -100,6 +107,7 @@ function App() {
           <Route path="/connections" element={<ProtectedRoute><ConnectionsPage /></ProtectedRoute>} />
           <Route path="/chat" element={<ProtectedRoute><Inbox /></ProtectedRoute>} />
           <Route path="/chat/:userId" element={<ProtectedRoute><ChatWindow /></ProtectedRoute>} />
+          <Route path="/saved" element={<ProtectedRoute><SavedPosts /></ProtectedRoute>} />
         </Routes>
       </Router>
     </AuthProvider>

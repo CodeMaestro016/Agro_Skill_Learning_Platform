@@ -875,13 +875,20 @@ const Profile = () => {
 
                         {post.imageUrls && post.imageUrls.length > 0 && (
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-3">
-                            {post.imageUrls.map((url, index) => (
-                              <div key={`profile-post-${post.id}-image-${index}-${url}`} className="relative aspect-square">
+                          {post.imageUrls.map((url, index) => (
+                            <div key={`profile-post-${post.id}-image-${index}-${url}`} className="relative group">
+                              <div className="aspect-square bg-gray-100 rounded-xl overflow-hidden">
                                 <img
                                   src={url}
                                   alt={`Post image ${index + 1}`}
-                                  className="w-full h-full object-cover rounded-xl border border-gray-200"
+                                  className="w-full h-full object-contain rounded-xl border border-gray-200 hover:opacity-90 transition-opacity duration-200"
+                                  onError={(e) => {
+                                    console.error('Error loading image:', url);
+                                    e.target.onerror = null;
+                                    e.target.src = 'https://via.placeholder.com/400x400?text=Image+Not+Found';
+                                  }}
                                 />
+                              </div>
                               </div>
                             ))}
                           </div>

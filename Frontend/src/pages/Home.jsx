@@ -1,7 +1,7 @@
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { getFeed } from '../services/api';
+import { getFeed, savePost, unsavePost, getSavedPosts } from '../services/api';
 import NavBar from '../components/NavBar';
 
 const Home = () => {
@@ -13,7 +13,32 @@ const Home = () => {
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(0);
+  const [savedPostIds, setSavedPostIds] = useState(new Set());
   const observer = useRef();
+
+  // Load saved posts
+  useEffect(() => {
+    const loadSavedPosts = async () => {
+      try {
+        console.log('Loading saved posts...');
+        const data = await getSavedPosts();
+        console.log('Saved posts data:', data);
+        const savedIds = new Set((Array.isArray(data) ? data : (data.content || [])).map(post => post.id));
+        console.log('Saved post IDs:', Array.from(savedIds));
+        setSavedPostIds(savedIds);
+      } catch (error) {
+        console.error('Error loading saved posts:', error);
+        if (error.message === 'Authentication required') {
+          localStorage.removeItem('token');
+          navigate('/login');
+        }
+      }
+    };
+
+    if (user) {
+      loadSavedPosts();
+    }
+  }, [user, navigate]);
 
   const loadFeed = async () => {
     if (loading) return;
@@ -46,14 +71,52 @@ const Home = () => {
     }
   }, [loading, hasMore]);
 
+  const handleSavePost = async (postId) => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+
+    try {
+      console.log('Toggling save for post:', postId);
+      console.log('Current savedPostIds:', Array.from(savedPostIds));
+      
+      if (savedPostIds.has(postId)) {
+        console.log('Unsaving post:', postId);
+        await unsavePost(postId);
+        setSavedPostIds(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(postId);
+          console.log('Updated savedPostIds after unsave:', Array.from(newSet));
+          return newSet;
+        });
+      } else {
+        console.log('Saving post:', postId);
+        await savePost(postId);
+        setSavedPostIds(prev => {
+          const newSet = new Set(prev);
+          newSet.add(postId);
+          console.log('Updated savedPostIds after save:', Array.from(newSet));
+          return newSet;
+        });
+      }
+    } catch (error) {
+      console.error('Error toggling save post:', error);
+      if (error.message === 'Authentication required') {
+        localStorage.removeItem('token');
+        navigate('/login');
+      }
+    }
+  };
+
   const renderPost = (post, index) => {
     const isLastElement = index === feed.length - 1;
+    const isSaved = savedPostIds.has(post.id);
     
-    // Debug logging for post data
     console.log('Rendering post:', {
       id: post.id,
-      userName: post.userName,
-      profilePhoto: post.profilePhoto
+      isSaved,
+      savedPostIds: Array.from(savedPostIds)
     });
 
     return (
@@ -87,6 +150,28 @@ const Home = () => {
               {new Date(post.createdAt).toLocaleString()}
             </p>
           </div>
+          <button
+            onClick={() => handleSavePost(post.id)}
+            className={`p-2 rounded-full transition-colors duration-200 ${
+              isSaved ? 'text-green-600 hover:text-green-700' : 'text-gray-400 hover:text-gray-600'
+            }`}
+            title={isSaved ? 'Unsave post' : 'Save post'}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-6 w-6"
+              fill={isSaved ? 'currentColor' : 'none'}
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
+              />
+            </svg>
+          </button>
         </div>
         
         {post.caption && (
@@ -98,12 +183,19 @@ const Home = () => {
         {post.imageUrls && post.imageUrls.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-3">
             {post.imageUrls.map((url, index) => (
-              <div key={`feed-post-${post.id}-image-${index}-${url}`} className="relative aspect-square">
-                <img
-                  src={url}
-                  alt={`Post image ${index + 1}`}
-                  className="w-full h-full object-cover rounded-xl border border-gray-200"
-                />
+              <div key={`feed-post-${post.id}-image-${index}-${url}`} className="relative group">
+                <div className="aspect-square bg-gray-100 rounded-xl overflow-hidden">
+                  <img
+                    src={url}
+                    alt={`Post image ${index + 1}`}
+                    className="w-full h-full object-contain rounded-xl border border-gray-200 hover:opacity-90 transition-opacity duration-200"
+                    onError={(e) => {
+                      console.error('Error loading image:', url);
+                      e.target.onerror = null;
+                      e.target.src = 'https://via.placeholder.com/400x400?text=Image+Not+Found';
+                    }}
+                  />
+                </div>
               </div>
             ))}
           </div>
@@ -139,10 +231,10 @@ const Home = () => {
 
   return (
     <div className="min-h-screen bg-gray-100 pt-16">
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <div className="bg-white rounded-lg shadow-md p-4">
+      <div className="container mx-auto px-4 py-8">
+        <div className="bg-white rounded-lg shadow-lg p-6">
           {/* Feed Section */}
-          <div className="mt-4">
+          <div className="mt-8">
             {feed.map((post, index) => renderPost(post, index))}
             {loading && (
               <div className="text-center py-4">
