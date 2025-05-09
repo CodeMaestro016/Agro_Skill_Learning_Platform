@@ -1,8 +1,11 @@
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { getFeed, savePost, unsavePost, getSavedPosts } from '../services/api';
+import { getFeed, savePost, unsavePost, getSavedPosts, getLikedPosts, addComment, getComments, updateComment, deleteComment, toggleCommentLike } from '../services/api';
 import NavBar from '../components/NavBar';
+import NotificationCenter from '../components/NotificationCenter';
+import LikeButton from '../components/LikeButton';
+import CommentItem from '../components/CommentItem';
 
 const Home = () => {
   const { user } = useAuth();
@@ -14,20 +17,33 @@ const Home = () => {
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(0);
   const [savedPostIds, setSavedPostIds] = useState(new Set());
+  const [likedPostIds, setLikedPostIds] = useState(new Set());
+  const [comments, setComments] = useState({});
+  const [commentText, setCommentText] = useState({});
+  const [editingComment, setEditingComment] = useState(null);
+  const [editCommentText, setEditCommentText] = useState('');
   const observer = useRef();
 
-  // Load saved posts
+  // Load saved posts and liked posts
   useEffect(() => {
-    const loadSavedPosts = async () => {
+    const loadUserInteractions = async () => {
       try {
-        console.log('Loading saved posts...');
-        const data = await getSavedPosts();
-        console.log('Saved posts data:', data);
-        const savedIds = new Set((Array.isArray(data) ? data : (data.content || [])).map(post => post.id));
+        console.log('Loading user interactions...');
+        // Load saved posts
+        const savedData = await getSavedPosts();
+        console.log('Saved posts data:', savedData);
+        const savedIds = new Set((Array.isArray(savedData) ? savedData : (savedData.content || [])).map(post => post.id));
         console.log('Saved post IDs:', Array.from(savedIds));
         setSavedPostIds(savedIds);
+
+        // Load liked posts
+        const likedData = await getLikedPosts();
+        console.log('Liked posts data:', likedData);
+        const likedIds = new Set((Array.isArray(likedData) ? likedData : (likedData.content || [])).map(post => post.id));
+        console.log('Liked post IDs:', Array.from(likedIds));
+        setLikedPostIds(likedIds);
       } catch (error) {
-        console.error('Error loading saved posts:', error);
+        console.error('Error loading user interactions:', error);
         if (error.message === 'Authentication required') {
           localStorage.removeItem('token');
           navigate('/login');
@@ -36,7 +52,7 @@ const Home = () => {
     };
 
     if (user) {
-      loadSavedPosts();
+      loadUserInteractions();
     }
   }, [user, navigate]);
 
@@ -109,9 +125,296 @@ const Home = () => {
     }
   };
 
+  const handleAddComment = async (postId) => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+
+    const text = commentText[postId];
+    if (!text?.trim()) return;
+
+    try {
+      const newComment = await addComment(postId, text);
+      // Add user information to the new comment
+      const commentWithUserInfo = {
+        ...newComment,
+        userName: user.firstName + ' ' + user.lastName,
+        userProfilePhoto: user.profilePhoto,
+        userId: user.id
+      };
+      
+      setComments(prev => ({
+        ...prev,
+        [postId]: [...(prev[postId] || []), commentWithUserInfo]
+      }));
+      setCommentText(prev => ({
+        ...prev,
+        [postId]: ''
+      }));
+    } catch (error) {
+      console.error('Error adding comment:', error);
+      if (error.message === 'Authentication required') {
+        localStorage.removeItem('token');
+        navigate('/login');
+      }
+    }
+  };
+
+  const loadComments = async (postId) => {
+    try {
+      const data = await getComments(postId);
+      setComments(prev => ({
+        ...prev,
+        [postId]: data
+      }));
+    } catch (error) {
+      console.error('Error loading comments:', error);
+    }
+  };
+
+  // Load comments when a post is rendered
+  useEffect(() => {
+    const loadCommentsForPosts = async () => {
+      const postsWithoutComments = feed.filter(post => !comments[post.id]);
+      if (postsWithoutComments.length > 0) {
+        try {
+          await Promise.all(
+            postsWithoutComments.map(async (post) => {
+              const data = await getComments(post.id);
+              setComments(prev => ({
+                ...prev,
+                [post.id]: data
+              }));
+            })
+          );
+        } catch (error) {
+          console.error('Error loading comments:', error);
+        }
+      }
+    };
+
+    loadCommentsForPosts();
+  }, [feed]);
+
+  // Add a new useEffect to handle comment updates
+  useEffect(() => {
+    const handleCommentUpdate = async () => {
+      try {
+        const updatedComments = {};
+        for (const postId in comments) {
+          const data = await getComments(postId);
+          updatedComments[postId] = data;
+        }
+        setComments(updatedComments);
+      } catch (error) {
+        console.error('Error updating comments:', error);
+      }
+    };
+
+    // Set up an interval to refresh comments every 30 seconds
+    const intervalId = setInterval(handleCommentUpdate, 30000);
+
+    // Cleanup interval on component unmount
+    return () => clearInterval(intervalId);
+  }, []);
+
+  const handleUpdateComment = async (postId, commentId, newText) => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+
+    try {
+      await updateComment(commentId, newText);
+      // Fetch the latest comments after update
+      const updatedComments = await getComments(postId);
+      setComments(prev => ({
+        ...prev,
+        [postId]: updatedComments
+      }));
+    } catch (error) {
+      console.error('Error updating comment:', error);
+      if (error.message === 'Authentication required') {
+        localStorage.removeItem('token');
+        navigate('/login');
+      }
+    }
+  };
+
+  const handleDeleteComment = async (postId, commentId) => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+
+    try {
+      await deleteComment(commentId);
+      // Fetch the latest comments after deletion
+      const updatedComments = await getComments(postId);
+      setComments(prev => ({
+        ...prev,
+        [postId]: updatedComments
+      }));
+    } catch (error) {
+      console.error('Error deleting comment:', error);
+      if (error.message === 'Authentication required') {
+        localStorage.removeItem('token');
+        navigate('/login');
+      }
+    }
+  };
+
+  const startEditingComment = (comment) => {
+    setEditingComment(comment.id);
+    setEditCommentText(comment.content);
+  };
+
+  const cancelEditingComment = () => {
+    setEditingComment(null);
+    setEditCommentText('');
+  };
+
+  const handleCommentLike = async (commentId) => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+
+    try {
+      const updatedComment = await toggleCommentLike(commentId);
+      
+      // Update the comment in the state
+      setComments(prev => {
+        const newComments = { ...prev };
+        Object.keys(newComments).forEach(postId => {
+          newComments[postId] = newComments[postId].map(comment => {
+            if (comment.id === commentId) {
+              return {
+                ...comment,
+                ...updatedComment,
+                userName: comment.userName,
+                userProfilePhoto: comment.userProfilePhoto
+              };
+            }
+            if (comment.replies) {
+              return {
+                ...comment,
+                replies: comment.replies.map(reply =>
+                  reply.id === commentId
+                    ? {
+                        ...reply,
+                        ...updatedComment,
+                        userName: reply.userName,
+                        userProfilePhoto: reply.userProfilePhoto
+                      }
+                    : reply
+                )
+              };
+            }
+            return comment;
+          });
+        });
+        return newComments;
+      });
+    } catch (error) {
+      console.error('Error toggling comment like:', error);
+      if (error.message === 'Authentication required') {
+        localStorage.removeItem('token');
+        navigate('/login');
+      }
+    }
+  };
+
+  const handleAddReply = async (postId, parentCommentId, content) => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+
+    try {
+      // First, add the reply to the backend
+      const newReply = await addComment(postId, content, parentCommentId);
+      
+      // Add user information to the new reply
+      const replyWithUserInfo = {
+        ...newReply,
+        userName: user.firstName + ' ' + user.lastName,
+        userProfilePhoto: user.profilePhoto,
+        userId: user.id
+      };
+
+      // Update the comments state with the new reply
+      setComments(prev => {
+        const newComments = { ...prev };
+        if (newComments[postId]) {
+          newComments[postId] = newComments[postId].map(comment => {
+            if (comment.id === parentCommentId) {
+              // Create a new array with the existing replies plus the new reply
+              const updatedReplies = [...(comment.replies || []), replyWithUserInfo];
+              return {
+                ...comment,
+                replies: updatedReplies
+              };
+            }
+            return comment;
+          });
+        }
+        return newComments;
+      });
+
+      // Fetch the latest comments to ensure everything is in sync
+      const updatedComments = await getComments(postId);
+      setComments(prev => ({
+        ...prev,
+        [postId]: updatedComments
+      }));
+
+    } catch (error) {
+      console.error('Error adding reply:', error);
+      if (error.message === 'Authentication required') {
+        localStorage.removeItem('token');
+        navigate('/login');
+      }
+    }
+  };
+
+  const renderComments = (postId, postComments, post) => {
+    return (
+      <div className="mt-4 space-y-4">
+        {postComments.map(comment => (
+          <CommentItem
+            key={comment.id}
+            comment={comment}
+            onLike={handleCommentLike}
+            onReply={(parentCommentId, content) => handleAddReply(postId, parentCommentId, content)}
+            onEdit={(commentId, newText) => handleUpdateComment(postId, commentId, newText)}
+            onDelete={(commentId) => handleDeleteComment(postId, commentId)}
+            canEdit={user?.id === comment.userId}
+            canDelete={user?.id === comment.userId || user?.id === post.userId}
+            currentUser={user}
+          />
+        ))}
+      </div>
+    );
+  };
+
+  // Update feed posts with like status
+  useEffect(() => {
+    if (feed.length > 0) {
+      setFeed(prevFeed => 
+        prevFeed.map(post => ({
+          ...post,
+          isLiked: likedPostIds.has(post.id)
+        }))
+      );
+    }
+  }, [likedPostIds]);
+
   const renderPost = (post, index) => {
     const isLastElement = index === feed.length - 1;
     const isSaved = savedPostIds.has(post.id);
+    const postComments = comments[post.id] || [];
     
     console.log('Rendering post:', {
       id: post.id,
@@ -214,6 +517,50 @@ const Home = () => {
             </video>
           </div>
         )}
+
+        {/* Like and Comment Section */}
+        <div className="mt-4 border-t border-gray-100 pt-4">
+          <div className="flex items-center gap-4 mb-4">
+            <LikeButton postId={post.id} initialLikeCount={post.likeCount || 0} />
+            <div className="flex items-center gap-2 text-gray-400">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                />
+              </svg>
+              <span className="text-sm font-medium">{postComments.length}</span>
+            </div>
+          </div>
+
+          {/* Comments Section */}
+          <div className="mt-4">
+            <div className="flex items-center space-x-2">
+              <input
+                type="text"
+                value={commentText[post.id] || ''}
+                onChange={(e) => setCommentText(prev => ({ ...prev, [post.id]: e.target.value }))}
+                placeholder="Write a comment..."
+                className="flex-1 p-2 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              />
+              <button
+                onClick={() => handleAddComment(post.id)}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+              >
+                Comment
+              </button>
+            </div>
+            {renderComments(post.id, postComments, post)}
+          </div>
+        </div>
       </div>
     );
   };
@@ -230,29 +577,44 @@ const Home = () => {
   }, [loading, hasMore, loadMoreFeed]);
 
   return (
-    <div className="min-h-screen bg-gray-100 pt-16">
+    <div className="min-h-screen bg-gray-100 pt-16 relative">
       <div className="container mx-auto px-4 py-8">
-        <div className="bg-white rounded-lg shadow-lg p-6">
+        <div className="flex gap-2">
           {/* Feed Section */}
-          <div className="mt-8">
-            {feed.map((post, index) => renderPost(post, index))}
-            {loading && (
-              <div className="text-center py-4">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto"></div>
+          <div className="flex-1 bg-white rounded-lg shadow-lg p-6 relative">
+            
+            {/* Notification Center inside feed, top-right */}
+            <div className="absolute top-6 right-2 z-50">
+              <div className="w-20">
+                <NotificationCenter />
               </div>
-            )}
-            {!hasMore && feed.length > 0 && (
-              <p className="text-center text-gray-500 py-4">No more posts to load</p>
-            )}
-            {!loading && feed.length === 0 && (
-              <p className="text-center text-gray-500 py-4">No posts yet</p>
-            )}
+            </div>
+  
+            {/* Feed Posts */}
+            <div className="mt-20"> {/* adds space below the NotificationCenter */}
+              {feed.map((post, index) => renderPost(post, index))}
+              {loading && (
+                <div className="text-center py-4">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto"></div>
+                </div>
+              )}
+              {!hasMore && feed.length > 0 && (
+                <p className="text-center text-gray-500 py-4">No more posts to load</p>
+              )}
+              {!loading && feed.length === 0 && (
+                <p className="text-center text-gray-500 py-4">No posts yet</p>
+              )}
+            </div>
           </div>
         </div>
       </div>
+  
       <NavBar />
     </div>
   );
+  
+  
+  
 };
 
 export default Home;
