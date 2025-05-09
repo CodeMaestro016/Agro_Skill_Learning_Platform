@@ -1,16 +1,28 @@
-import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { login } from '../services/api';
+import Logo from '../components/Logo';
 
 const Login = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login: authLogin } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
   });
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    const urlParams = new URLSearchParams(location.search);
+    const errorParam = urlParams.get('error');
+    if (errorParam) {
+      setError(decodeURIComponent(errorParam));
+    } else if (location.state?.error) {
+      setError(location.state.error);
+    }
+  }, [location]);
 
   const handleChange = (e) => {
     setFormData({
@@ -24,19 +36,6 @@ const Login = () => {
     try {
       const response = await login(formData.email, formData.password);
       authLogin(response.user, response.token);
-      
-      // Fetch complete user data after successful login
-      const userResponse = await fetch('http://localhost:8081/api/user/me', {
-        headers: {
-          Authorization: `Bearer ${response.token}`,
-        },
-      });
-      
-      if (userResponse.ok) {
-        const userData = await userResponse.json();
-        authLogin(userData, response.token);
-      }
-      
       navigate('/home');
     } catch (err) {
       setError(err.message || 'Login failed');
@@ -45,8 +44,7 @@ const Login = () => {
 
   const handleGoogleLogin = async () => {
     try {
-      // Replace with your Google OAuth URL
-      window.location.href = 'http://localhost:5000/api/auth/google';
+      window.location.href = 'http://localhost:8081/oauth2/authorization/google';
     } catch (err) {
       setError('Google login failed');
     }
@@ -54,7 +52,6 @@ const Login = () => {
 
   const handleFacebookLogin = async () => {
     try {
-      // Replace with your Facebook OAuth URL
       window.location.href = 'http://localhost:5000/api/auth/facebook';
     } catch (err) {
       setError('Facebook login failed');
@@ -62,17 +59,26 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-green-100 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
-        <div className="bg-white p-8 rounded-lg shadow-md">
+        <div className="bg-white p-8 rounded-2xl shadow-xl">
           <div className="text-center">
-            <h2 className="text-3xl font-bold text-gray-900">Login</h2>
+            <div className="flex justify-center mb-6">
+              <Logo />
+            </div>
+            <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back!</h2>
+            <p className="text-gray-600">Sign in to continue your agricultural learning journey</p>
+            <Link to="/" className="inline-block mt-4 text-green-600 hover:text-green-800">
+              ← Back to Home
+            </Link>
           </div>
+          
           {error && (
-            <div className="mt-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative" role="alert">
+            <div className="mt-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg relative" role="alert">
               <span className="block sm:inline">{error}</span>
             </div>
           )}
+
           <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
             <div className="space-y-4">
               <div>
@@ -85,7 +91,7 @@ const Login = () => {
                   type="email"
                   autoComplete="email"
                   required
-                  className="input-field mt-1"
+                  className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
                   value={formData.email}
                   onChange={handleChange}
                 />
@@ -100,17 +106,36 @@ const Login = () => {
                   type="password"
                   autoComplete="current-password"
                   required
-                  className="input-field mt-1"
+                  className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
                   value={formData.password}
                   onChange={handleChange}
                 />
               </div>
             </div>
 
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <input
+                  id="remember-me"
+                  name="remember-me"
+                  type="checkbox"
+                  className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                />
+                <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
+                  Remember me
+                </label>
+              </div>
+              <div className="text-sm">
+                <a href="#" className="font-medium text-green-600 hover:text-green-800">
+                  Forgot your password?
+                </a>
+              </div>
+            </div>
+
             <div>
               <button
                 type="submit"
-                className="btn-primary w-full"
+                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
               >
                 Sign In
               </button>
@@ -129,7 +154,7 @@ const Login = () => {
               <button
                 type="button"
                 onClick={handleGoogleLogin}
-                className="w-full flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                className="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
               >
                 <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
                   <path
@@ -154,7 +179,7 @@ const Login = () => {
               <button
                 type="button"
                 onClick={handleFacebookLogin}
-                className="w-full flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                className="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
               >
                 <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="#1877F2">
                   <path
@@ -167,9 +192,12 @@ const Login = () => {
             </div>
 
             <div className="text-center">
-              <Link to="/signup" className="text-sm text-green-600 hover:text-green-800">
-                Don't have an account? Sign Up
-              </Link>
+              <p className="text-sm text-gray-600">
+                Don't have an account?{' '}
+                <Link to="/signup" className="font-medium text-green-600 hover:text-green-800">
+                  Sign up now
+                </Link>
+              </p>
             </div>
           </form>
         </div>
@@ -178,4 +206,4 @@ const Login = () => {
   );
 };
 
-export default Login; 
+export default Login;

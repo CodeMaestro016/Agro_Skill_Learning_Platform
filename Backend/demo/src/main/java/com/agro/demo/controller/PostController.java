@@ -2,7 +2,9 @@ package com.agro.demo.controller;
 
 import com.agro.demo.model.Post;
 import com.agro.demo.model.PostDTO;
+import com.agro.demo.model.SavedPost;
 import com.agro.demo.service.PostService;
+import com.agro.demo.service.SavedPostService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,6 +28,9 @@ public class PostController {
     
     @Autowired
     private PostService postService;
+    
+    @Autowired
+    private SavedPostService savedPostService;
 
     @PostMapping(consumes = {"multipart/form-data"})
     public ResponseEntity<?> createPost(
@@ -187,9 +192,54 @@ public class PostController {
     }
 
     
-    
-    
+     
 
+    @PostMapping("/{id}/save")
+    public ResponseEntity<?> savePost(@PathVariable String id, @RequestParam String userId) {
+        logger.info("Saving post {} for user {}", id, userId);
+        
+        try {
+            SavedPost savedPost = savedPostService.savePost(userId, id);
+            return ResponseEntity.ok(savedPost);
+        } catch (IllegalArgumentException e) {
+            logger.error("Validation error: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            logger.error("Error saving post: ", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body("Failed to save post: " + e.getMessage());
+        }
+    }
+
+    @DeleteMapping("/{id}/save")
+    public ResponseEntity<?> unsavePost(@PathVariable String id, @RequestParam String userId) {
+        logger.info("Unsaving post {} for user {}", id, userId);
+        
+        try {
+            savedPostService.unsavePost(userId, id);
+            return ResponseEntity.ok("Post unsaved successfully");
+        } catch (Exception e) {
+            logger.error("Error unsaving post: ", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body("Failed to unsave post: " + e.getMessage());
+        }
+    }
+
+    @GetMapping("/saved")
+    public ResponseEntity<?> getSavedPosts(@RequestParam String userId) {
+        logger.info("Fetching saved posts for user {}", userId);
+        
+        try {
+            List<PostDTO> savedPosts = savedPostService.getSavedPosts(userId);
+            return ResponseEntity.ok(savedPosts);
+        } catch (Exception e) {
+            logger.error("Error fetching saved posts: ", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body("Failed to fetch saved posts: " + e.getMessage());
+        }
+    }
+
+    
 
 
 }
