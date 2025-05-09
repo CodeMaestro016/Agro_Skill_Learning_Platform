@@ -1,0 +1,24 @@
+spring.application.name=demo
+
+# OAuth2 Configuration
+# Google OAuth2 Configuration
+spring.security.oauth2.client.registration.google.client-id=your-google-client-id
+spring.security.oauth2.client.registration.google.client-secret=your-google-client-secret
+spring.security.oauth2.client.registration.google.scope=profile,email
+
+spring.security.oauth2.client.registration.facebook.client-id=your-facebook-client-id
+spring.security.oauth2.client.registration.facebook.client-secret=your-facebook-client-secret
+spring.security.oauth2.client.registration.facebook.scope=public_profile,email
+
+# MongoDB Configuration
+spring.data.mongodb.uri=mongodb+srv://username:password@your-cluster-url/your-database?retryWrites=true&w=majority
+
+# JWT Configuration
+jwt.secret=your-jwt-secret-key
+jwt.expiration=86400000
+
+# Server Configuration
+server.port=8080
+
+# Logging Configuration
+logging.level.org.springframework.data.mongodb=DEBUG 
