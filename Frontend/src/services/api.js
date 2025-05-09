@@ -228,6 +228,129 @@ export const deletePost = async (id, userId) => {
   }
 };
 
+// Interactivity-related functions
+export const toggleLike = async (postId) => {
+  try {
+    const response = await api.post(`/interactivity/likes/${postId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error toggling like:', error.response?.data || error.message);
+    throw error.response?.data || error.message;
+  }
+};
+
+export const getLikeCount = async (postId) => {
+  try {
+    const response = await api.get(`/interactivity/likes/${postId}/count`);
+    return response.data.count;
+  } catch (error) {
+    console.error('Error getting like count:', error.response?.data || error.message);
+    throw error.response?.data || error.message;
+  }
+};
+
+export const hasUserLiked = async (postId) => {
+  try {
+    const response = await api.get(`/interactivity/likes/${postId}/status`);
+    return response.data.hasLiked;
+  } catch (error) {
+    console.error('Error checking like status:', error.response?.data || error.message);
+    throw error.response?.data || error.message;
+  }
+};
+
+export const getComments = async (postId) => {
+  try {
+    const response = await api.get(`/interactivity/comments/${postId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error getting comments:', error.response?.data || error.message);
+    throw error.response?.data || error.message;
+  }
+};
+
+export const addComment = async (postId, content, parentCommentId = null) => {
+  try {
+    console.log('Adding comment:', { postId, content, parentCommentId }); // Debug log
+    const response = await api.post(`/interactivity/comments/${postId}`, {
+      content,
+      parentCommentId: parentCommentId || null // Ensure null if undefined
+    });
+    console.log('Add comment response:', response.data); // Debug log
+    return response.data;
+  } catch (error) {
+    console.error('Error adding comment:', error.response?.data || error.message);
+    throw error.response?.data || error.message;
+  }
+};
+
+export const updateComment = async (commentId, content) => {
+  try {
+    const response = await api.put(`/interactivity/comments/${commentId}`, { content });
+    return response.data;
+  } catch (error) {
+    console.error('Error updating comment:', error.response?.data || error.message);
+    throw error.response?.data || error.message;
+  }
+};
+
+export const deleteComment = async (commentId) => {
+  try {
+    await api.delete(`/interactivity/comments/${commentId}`);
+  } catch (error) {
+    console.error('Error deleting comment:', error.response?.data || error.message);
+    throw error.response?.data || error.message;
+  }
+};
+
+export const toggleCommentLike = async (commentId) => {
+  try {
+    const response = await api.post(`/interactivity/comments/${commentId}/like`);
+    return response.data;
+  } catch (error) {
+    console.error('Error toggling comment like:', error.response?.data || error.message);
+    throw error.response?.data || error.message;
+  }
+};
+
+export const getCommentReplies = async (commentId) => {
+  try {
+    const response = await api.get(`/interactivity/comments/${commentId}/replies`);
+    return response.data;
+  } catch (error) {
+    console.error('Error getting comment replies:', error.response?.data || error.message);
+    throw error.response?.data || error.message;
+  }
+};
+
+export const getNotifications = async () => {
+  try {
+    const response = await api.get('/interactivity/notifications');
+    return response.data;
+  } catch (error) {
+    console.error('Error getting notifications:', error.response?.data || error.message);
+    throw error.response?.data || error.message;
+  }
+};
+
+export const markNotificationAsRead = async (notificationId) => {
+  try {
+    await api.put(`/interactivity/notifications/${notificationId}/read`);
+  } catch (error) {
+    console.error('Error marking notification as read:', error.response?.data || error.message);
+    throw error.response?.data || error.message;
+  }
+};
+
+export const markAllNotificationsAsRead = async () => {
+  try {
+    await api.put('/interactivity/notifications/read-all');
+  } catch (error) {
+    console.error('Error marking all notifications as read:', error.response?.data || error.message);
+    throw error.response?.data || error.message;
+  }
+};
+
 // Create a new learning plan
 export const createLearningPlan = async (planData) => {
   try {
@@ -369,7 +492,15 @@ export const getSavedPosts = async () => {
   }
 };
 
-
-
+export const getLikedPosts = async () => {
+  try {
+    const response = await api.get('/interactivity/likes/user');
+    console.log('Liked posts response:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching liked posts:', error.response?.data || error.message);
+    throw error.response?.data || error.message;
+  }
+};
 
 export default api;

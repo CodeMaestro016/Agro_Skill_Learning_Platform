@@ -1,9 +1,11 @@
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { getCurrentUserProfile, getUserProfile, getAllPosts, deletePost, addPost, editPost, getLearningPlans } from '../services/api';
+import { getCurrentUserProfile, getUserProfile, getAllPosts, deletePost, addPost, editPost, getLearningPlans, addComment, getComments, updateComment, deleteComment, toggleCommentLike, toggleLike, getLikedPosts } from '../services/api';
 import NavBar from '../components/NavBar';
 import CreateNewPlan from './CreateNewPlan';
+import LikeButton from '../components/LikeButton';
+import CommentItem from '../components/CommentItem';
 
 const Profile = () => {
   const { user: currentUser } = useAuth();
@@ -38,6 +40,12 @@ const Profile = () => {
 
   // Add state to control how many posts are shown
   const [showAllPosts, setShowAllPosts] = useState(false);
+
+  const [comments, setComments] = useState({});
+  const [commentText, setCommentText] = useState({});
+  const [editingComment, setEditingComment] = useState(null);
+  const [editCommentText, setEditCommentText] = useState('');
+  const [likedPostIds, setLikedPostIds] = useState(new Set());
 
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -75,6 +83,51 @@ const Profile = () => {
 
     fetchUserProfile();
   }, [userId]);
+
+  // Load liked posts
+  useEffect(() => {
+    const loadUserInteractions = async () => {
+      try {
+        const likedData = await getLikedPosts();
+        const likedIds = new Set((Array.isArray(likedData) ? likedData : (likedData.content || [])).map(post => post.id));
+        setLikedPostIds(likedIds);
+      } catch (error) {
+        console.error('Error loading user interactions:', error);
+        if (error.message === 'Authentication required') {
+          localStorage.removeItem('token');
+          navigate('/login');
+        }
+      }
+    };
+
+    if (currentUser) {
+      loadUserInteractions();
+    }
+  }, [currentUser, navigate]);
+
+  // Load comments when posts are loaded
+  useEffect(() => {
+    const loadCommentsForPosts = async () => {
+      const postsWithoutComments = userPosts.filter(post => !comments[post.id]);
+      if (postsWithoutComments.length > 0) {
+        try {
+          await Promise.all(
+            postsWithoutComments.map(async (post) => {
+              const data = await getComments(post.id);
+              setComments(prev => ({
+                ...prev,
+                [post.id]: data
+              }));
+            })
+          );
+        } catch (error) {
+          console.error('Error loading comments:', error);
+        }
+      }
+    };
+
+    loadCommentsForPosts();
+  }, [userPosts]);
 
   const handleImageChange = (e) => {
     const files = Array.from(e.target.files);
@@ -677,6 +730,378 @@ const Profile = () => {
     }
   };
 
+  const handleAddComment = async (postId) => {
+    if (!currentUser) {
+      navigate('/login');
+      return;
+    }
+
+    const text = commentText[postId];
+    if (!text?.trim()) return;
+
+    try {
+      const newComment = await addComment(postId, text);
+      const commentWithUserInfo = {
+        ...newComment,
+        userName: currentUser.firstName + ' ' + currentUser.lastName,
+        userProfilePhoto: currentUser.profilePhoto,
+        userId: currentUser.id
+      };
+      
+      setComments(prev => ({
+        ...prev,
+        [postId]: [...(prev[postId] || []), commentWithUserInfo]
+      }));
+      setCommentText(prev => ({
+        ...prev,
+        [postId]: ''
+      }));
+    } catch (error) {
+      console.error('Error adding comment:', error);
+      if (error.message === 'Authentication required') {
+        localStorage.removeItem('token');
+        navigate('/login');
+      }
+    }
+  };
+
+  const handleAddReply = async (postId, parentCommentId, content) => {
+    if (!currentUser) {
+      navigate('/login');
+      return;
+    }
+
+    try {
+      const newReply = await addComment(postId, content, parentCommentId);
+      const replyWithUserInfo = {
+        ...newReply,
+        userName: currentUser.firstName + ' ' + currentUser.lastName,
+        userProfilePhoto: currentUser.profilePhoto,
+        userId: currentUser.id
+      };
+
+      setComments(prev => {
+        const newComments = { ...prev };
+        if (newComments[postId]) {
+          newComments[postId] = newComments[postId].map(comment => {
+            if (comment.id === parentCommentId) {
+              const updatedReplies = [...(comment.replies || []), replyWithUserInfo];
+              return {
+                ...comment,
+                replies: updatedReplies
+              };
+            }
+            return comment;
+          });
+        }
+        return newComments;
+      });
+
+      const updatedComments = await getComments(postId);
+      setComments(prev => ({
+        ...prev,
+        [postId]: updatedComments
+      }));
+
+    } catch (error) {
+      console.error('Error adding reply:', error);
+      if (error.message === 'Authentication required') {
+        localStorage.removeItem('token');
+        navigate('/login');
+      }
+    }
+  };
+
+  const handleUpdateComment = async (postId, commentId, newText) => {
+    if (!currentUser) {
+      navigate('/login');
+      return;
+    }
+
+    try {
+      await updateComment(commentId, newText);
+      setComments(prev => {
+        const newComments = { ...prev };
+        if (newComments[postId]) {
+          newComments[postId] = newComments[postId].map(comment => {
+            if (comment.id === commentId) {
+              return { ...comment, content: newText };
+            }
+            if (comment.replies && comment.replies.length > 0) {
+              return {
+                ...comment,
+                replies: comment.replies.map(reply =>
+                  reply.id === commentId
+                    ? { ...reply, content: newText }
+                    : reply
+                )
+              };
+            }
+            return comment;
+          });
+        }
+        return newComments;
+      });
+    } catch (error) {
+      console.error('Error updating comment:', error);
+      if (error.message === 'Authentication required') {
+        localStorage.removeItem('token');
+        navigate('/login');
+      }
+    }
+  };
+
+  const handleDeleteComment = async (postId, commentId) => {
+    if (!currentUser) {
+      navigate('/login');
+      return;
+    }
+
+    try {
+      await deleteComment(commentId);
+      setComments(prev => {
+        const newComments = { ...prev };
+        if (newComments[postId]) {
+          newComments[postId] = newComments[postId].map(comment => {
+            if (comment.replies && comment.replies.length > 0) {
+              return {
+                ...comment,
+                replies: comment.replies.filter(reply => reply.id !== commentId)
+              };
+            }
+            return comment;
+          });
+          newComments[postId] = newComments[postId].filter(comment => comment.id !== commentId);
+        }
+        return newComments;
+      });
+    } catch (error) {
+      console.error('Error deleting comment:', error);
+      if (error.message === 'Authentication required') {
+        localStorage.removeItem('token');
+        navigate('/login');
+      }
+    }
+  };
+
+  const handleCommentLike = async (commentId) => {
+    if (!currentUser) {
+      navigate('/login');
+      return;
+    }
+
+    try {
+      const updatedComment = await toggleCommentLike(commentId);
+      setComments(prev => {
+        const newComments = { ...prev };
+        Object.keys(newComments).forEach(postId => {
+          newComments[postId] = newComments[postId].map(comment => {
+            if (comment.id === commentId) {
+              return {
+                ...comment,
+                ...updatedComment,
+                userName: comment.userName,
+                userProfilePhoto: comment.userProfilePhoto
+              };
+            }
+            if (comment.replies) {
+              return {
+                ...comment,
+                replies: comment.replies.map(reply =>
+                  reply.id === commentId
+                    ? {
+                        ...reply,
+                        ...updatedComment,
+                        userName: reply.userName,
+                        userProfilePhoto: reply.userProfilePhoto
+                      }
+                    : reply
+                )
+              };
+            }
+            return comment;
+          });
+        });
+        return newComments;
+      });
+    } catch (error) {
+      console.error('Error toggling comment like:', error);
+      if (error.message === 'Authentication required') {
+        localStorage.removeItem('token');
+        navigate('/login');
+      }
+    }
+  };
+
+  const renderComments = (postId, postComments, post) => {
+    return (
+      <div className="mt-4 space-y-4">
+        {postComments.map(comment => (
+          <CommentItem
+            key={comment.id}
+            comment={comment}
+            onLike={handleCommentLike}
+            onReply={(parentCommentId, content) => handleAddReply(postId, parentCommentId, content)}
+            onEdit={(commentId, newText) => handleUpdateComment(postId, commentId, newText)}
+            onDelete={(commentId) => handleDeleteComment(postId, commentId)}
+            canEdit={currentUser?.id === comment.userId}
+            canDelete={currentUser?.id === comment.userId || currentUser?.id === post.userId}
+            currentUser={currentUser}
+          />
+        ))}
+      </div>
+    );
+  };
+
+  // Update the post rendering to include likes and comments
+  const renderPost = (post) => {
+    const postComments = comments[post.id] || [];
+    
+    return (
+      <div
+        key={`profile-post-${post.id}-${post.createdAt}`}
+        className="bg-white rounded-2xl shadow-lg p-6 mb-4 border border-gray-100 hover:shadow-xl transition-shadow duration-200"
+      >
+        <div className="flex justify-between items-start mb-4">
+          <div className="flex items-center gap-3">
+            {profileUser?.profilePhoto ? (
+              <img
+                src={profileUser.profilePhoto}
+                alt={profileUser.firstName}
+                className="w-12 h-12 rounded-full object-cover border border-gray-200"
+              />
+            ) : (
+              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center border border-gray-200">
+                <span className="text-green-800 text-lg font-bold">
+                  {profileUser?.firstName ? profileUser.firstName.charAt(0).toUpperCase() : 'U'}
+                </span>
+              </div>
+            )}
+            <div>
+              <p className="font-semibold text-gray-900">
+                {profileUser?.firstName} {profileUser?.lastName}
+              </p>
+              <p className="text-xs text-gray-400">
+                {new Date(post.createdAt).toLocaleString()}
+              </p>
+            </div>
+          </div>
+          {currentUser?.id === post.userId && (
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleEditPost(post)}
+                className="text-green-500 hover:text-green-700 p-2 rounded-full hover:bg-green-50 transition-colors duration-150"
+                disabled={isSubmitting}
+                title="Edit post"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+              </button>
+              <button
+                onClick={() => {
+                  setSelectedPost(post);
+                  setShowDeleteModal(true);
+                }}
+                className="text-red-500 hover:text-red-700 p-2 rounded-full hover:bg-red-50 transition-colors duration-150"
+                disabled={isDeleting}
+                title="Delete post"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            </div>
+          )}
+        </div>
+
+        {post.caption && (
+          <p className="text-gray-900 font-semibold mb-1 text-lg">{post.caption}</p>
+        )}
+
+        {post.content && (
+          <p className="text-gray-700 mb-3 text-base">{post.content}</p>
+        )}
+
+        {post.imageUrls && post.imageUrls.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-3">
+          {post.imageUrls.map((url, index) => (
+            <div key={`profile-post-${post.id}-image-${index}-${url}`} className="relative group">
+              <div className="aspect-square bg-gray-100 rounded-xl overflow-hidden">
+                <img
+                  src={url}
+                  alt={`Post image ${index + 1}`}
+                  className="w-full h-full object-contain rounded-xl border border-gray-200 hover:opacity-90 transition-opacity duration-200"
+                  onError={(e) => {
+                    console.error('Error loading image:', url);
+                    e.target.onerror = null;
+                    e.target.src = 'https://via.placeholder.com/400x400?text=Image+Not+Found';
+                  }}
+                />
+              </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {post.videoUrl && (
+          <div className="mb-3">
+            <video
+              key={`profile-post-${post.id}-video-${post.videoUrl}`}
+              controls
+              className="w-full rounded-xl border border-gray-200 max-h-[300px] object-contain"
+              src={post.videoUrl}
+            />
+          </div>
+        )}
+
+        {/* Like and Comment Section */}
+        <div className="mt-4 border-t border-gray-100 pt-4">
+          <div className="flex items-center gap-4 mb-4">
+            <LikeButton postId={post.id} initialLikeCount={post.likeCount || 0} />
+            <div className="flex items-center gap-2 text-gray-400">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                />
+              </svg>
+              <span className="text-sm font-medium">{postComments.length}</span>
+            </div>
+          </div>
+
+          {/* Comments Section */}
+          <div className="mt-4">
+            <div className="flex items-center space-x-2">
+              <input
+                type="text"
+                value={commentText[post.id] || ''}
+                onChange={(e) => setCommentText(prev => ({ ...prev, [post.id]: e.target.value }))}
+                placeholder="Write a comment..."
+                className="flex-1 p-2 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              />
+              <button
+                onClick={() => handleAddComment(post.id)}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+              >
+                Comment
+              </button>
+            </div>
+            {renderComments(post.id, postComments, post)}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-100 pt-16">
@@ -807,105 +1232,7 @@ const Profile = () => {
               ) : (
                 <>
                   <div className="space-y-6">
-                    {(showAllPosts ? userPosts : userPosts.slice(0, 2)).map((post) => (
-                      <div
-                        key={`profile-post-${post.id}-${post.createdAt}`}
-                        className="bg-white rounded-2xl shadow-lg p-6 mb-4 border border-gray-100 hover:shadow-xl transition-shadow duration-200"
-                      >
-                        <div className="flex justify-between items-start mb-4">
-                          <div className="flex items-center gap-3">
-                            {profileUser?.profilePhoto ? (
-                              <img
-                                src={profileUser.profilePhoto}
-                                alt={profileUser.firstName}
-                                className="w-12 h-12 rounded-full object-cover border border-gray-200"
-                              />
-                            ) : (
-                              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center border border-gray-200">
-                                <span className="text-green-800 text-lg font-bold">
-                                  {profileUser?.firstName ? profileUser.firstName.charAt(0).toUpperCase() : 'U'}
-                                </span>
-                              </div>
-                            )}
-                            <div>
-                              <p className="font-semibold text-gray-900">
-                                {profileUser?.firstName} {profileUser?.lastName}
-                              </p>
-                              <p className="text-xs text-gray-400">
-                                {new Date(post.createdAt).toLocaleString()}
-                              </p>
-                            </div>
-                          </div>
-                          {isOwnProfile && (
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => handleEditPost(post)}
-                                className="text-green-500 hover:text-green-700 p-2 rounded-full hover:bg-green-50 transition-colors duration-150"
-                                disabled={isSubmitting}
-                                title="Edit post"
-                              >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                </svg>
-                              </button>
-                              <button
-                                onClick={() => {
-                                  setSelectedPost(post);
-                                  setShowDeleteModal(true);
-                                }}
-                                className="text-red-500 hover:text-red-700 p-2 rounded-full hover:bg-red-50 transition-colors duration-150"
-                                disabled={isDeleting}
-                                title="Delete post"
-                              >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                              </button>
-                            </div>
-                          )}
-                        </div>
-
-                        {post.caption && (
-                          <p className="text-gray-900 font-semibold mb-1 text-lg">{post.caption}</p>
-                        )}
-
-                        {post.content && (
-                          <p className="text-gray-700 mb-3 text-base">{post.content}</p>
-                        )}
-
-                        {post.imageUrls && post.imageUrls.length > 0 && (
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-3">
-                          {post.imageUrls.map((url, index) => (
-                            <div key={`profile-post-${post.id}-image-${index}-${url}`} className="relative group">
-                              <div className="aspect-square bg-gray-100 rounded-xl overflow-hidden">
-                                <img
-                                  src={url}
-                                  alt={`Post image ${index + 1}`}
-                                  className="w-full h-full object-contain rounded-xl border border-gray-200 hover:opacity-90 transition-opacity duration-200"
-                                  onError={(e) => {
-                                    console.error('Error loading image:', url);
-                                    e.target.onerror = null;
-                                    e.target.src = 'https://via.placeholder.com/400x400?text=Image+Not+Found';
-                                  }}
-                                />
-                              </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
-                        {post.videoUrl && (
-                          <div className="mb-3">
-                            <video
-                              key={`profile-post-${post.id}-video-${post.videoUrl}`}
-                              controls
-                              className="w-full rounded-xl border border-gray-200 max-h-[300px] object-contain"
-                              src={post.videoUrl}
-                            />
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                    {(showAllPosts ? userPosts : userPosts.slice(0, 2)).map((post) => renderPost(post))}
                   </div>
                   {!showAllPosts && userPosts.length > 2 && (
                     <div className="flex justify-end mt-8">
