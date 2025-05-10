@@ -22,7 +22,26 @@ const NotificationCenter = () => {
             setIsLoading(true);
             setError(null);
             const fetchedNotifications = await getNotifications();
-            setNotifications(fetchedNotifications);
+            
+            // Preserve read status of existing notifications
+            setNotifications(prevNotifications => {
+                const prevNotificationsMap = new Map(
+                    prevNotifications.map(notification => [notification.id, notification])
+                );
+                
+                return fetchedNotifications.map(newNotification => {
+                    const existingNotification = prevNotificationsMap.get(newNotification.id);
+                    if (existingNotification) {
+                        // If the notification already exists, preserve its read status
+                        return {
+                            ...newNotification,
+                            isRead: existingNotification.isRead
+                        };
+                    }
+                    // For new notifications, use the server's read status
+                    return newNotification;
+                });
+            });
         } catch (error) {
             console.error('Error loading notifications:', error);
             setError('Failed to load notifications');
