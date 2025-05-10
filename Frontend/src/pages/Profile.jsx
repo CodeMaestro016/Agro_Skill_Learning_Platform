@@ -19,6 +19,7 @@ const Profile = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showCreatePlanForm, setShowCreatePlanForm] = useState(false);
+  const [expandedComments, setExpandedComments] = useState(new Set());
   
   // Modal states
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -797,11 +798,29 @@ const Profile = () => {
         return newComments;
       });
 
-      const updatedComments = await getComments(postId);
-      setComments(prev => ({
-        ...prev,
-        [postId]: updatedComments
-      }));
+      // Instead of fetching all comments again, just fetch the updated replies for this comment
+      const updatedReplies = await getCommentReplies(parentCommentId);
+      
+      // Update only the replies for this specific comment
+      setComments(prev => {
+        const newComments = { ...prev };
+        if (newComments[postId]) {
+          newComments[postId] = newComments[postId].map(comment => {
+            if (comment.id === parentCommentId) {
+              return {
+                ...comment,
+                replies: updatedReplies.map(reply => ({
+                  ...reply,
+                  userName: reply.userName || currentUser.firstName + ' ' + currentUser.lastName,
+                  userProfilePhoto: reply.userProfilePhoto || currentUser.profilePhoto
+                }))
+              };
+            }
+            return comment;
+          });
+        }
+        return newComments;
+      });
 
     } catch (error) {
       console.error('Error adding reply:', error);
@@ -819,20 +838,35 @@ const Profile = () => {
     }
 
     try {
-      await updateComment(commentId, newText);
+      const updatedComment = await updateComment(commentId, newText);
+      
+      // Update the comment in the state, handling both root comments and replies
       setComments(prev => {
         const newComments = { ...prev };
         if (newComments[postId]) {
           newComments[postId] = newComments[postId].map(comment => {
+            // If this is the comment being updated
             if (comment.id === commentId) {
-              return { ...comment, content: newText };
+              return {
+                ...comment,
+                content: newText,
+                userName: comment.userName,
+                userProfilePhoto: comment.userProfilePhoto,
+                replies: comment.replies // Preserve existing replies
+              };
             }
+            // If this comment has replies, check if any reply needs updating
             if (comment.replies && comment.replies.length > 0) {
               return {
                 ...comment,
-                replies: comment.replies.map(reply =>
+                replies: comment.replies.map(reply => 
                   reply.id === commentId
-                    ? { ...reply, content: newText }
+                    ? {
+                        ...reply,
+                        content: newText,
+                        userName: reply.userName,
+                        userProfilePhoto: reply.userProfilePhoto
+                      }
                     : reply
                 )
               };
@@ -859,9 +893,12 @@ const Profile = () => {
 
     try {
       await deleteComment(commentId);
+      
+      // Update the state, handling both root comments and replies
       setComments(prev => {
         const newComments = { ...prev };
         if (newComments[postId]) {
+          // First, try to find and remove the comment from replies
           newComments[postId] = newComments[postId].map(comment => {
             if (comment.replies && comment.replies.length > 0) {
               return {
@@ -871,6 +908,8 @@ const Profile = () => {
             }
             return comment;
           });
+          
+          // Then, remove the comment if it's a root comment
           newComments[postId] = newComments[postId].filter(comment => comment.id !== commentId);
         }
         return newComments;
@@ -953,9 +992,21 @@ const Profile = () => {
     );
   };
 
-  // Update the post rendering to include likes and comments
+  const toggleComments = (postId) => {
+    setExpandedComments(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(postId)) {
+        newSet.delete(postId);
+      } else {
+        newSet.add(postId);
+      }
+      return newSet;
+    });
+  };
+
   const renderPost = (post) => {
     const postComments = comments[post.id] || [];
+    const isCommentsExpanded = expandedComments.has(post.id);
     
     return (
       <div
@@ -1059,7 +1110,10 @@ const Profile = () => {
         <div className="mt-4 border-t border-gray-100 pt-4">
           <div className="flex items-center gap-4 mb-4">
             <LikeButton postId={post.id} initialLikeCount={post.likeCount || 0} />
-            <div className="flex items-center gap-2 text-gray-400">
+            <button
+              onClick={() => toggleComments(post.id)}
+              className="flex items-center gap-2 text-gray-400 hover:text-gray-600 transition-colors"
+            >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 className="h-6 w-6"
@@ -1075,28 +1129,30 @@ const Profile = () => {
                 />
               </svg>
               <span className="text-sm font-medium">{postComments.length}</span>
-            </div>
+            </button>
           </div>
 
           {/* Comments Section */}
-          <div className="mt-4">
-            <div className="flex items-center space-x-2">
-              <input
-                type="text"
-                value={commentText[post.id] || ''}
-                onChange={(e) => setCommentText(prev => ({ ...prev, [post.id]: e.target.value }))}
-                placeholder="Write a comment..."
-                className="flex-1 p-2 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-              />
-              <button
-                onClick={() => handleAddComment(post.id)}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-              >
-                Comment
-              </button>
+          {isCommentsExpanded && (
+            <div className="mt-4">
+              <div className="flex items-center space-x-2">
+                <input
+                  type="text"
+                  value={commentText[post.id] || ''}
+                  onChange={(e) => setCommentText(prev => ({ ...prev, [post.id]: e.target.value }))}
+                  placeholder="Write a comment..."
+                  className="flex-1 p-2 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                />
+                <button
+                  onClick={() => handleAddComment(post.id)}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                >
+                  Comment
+                </button>
+              </div>
+              {renderComments(post.id, postComments, post)}
             </div>
-            {renderComments(post.id, postComments, post)}
-          </div>
+          )}
         </div>
       </div>
     );

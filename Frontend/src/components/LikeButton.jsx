@@ -45,18 +45,15 @@ const LikeButton = ({ postId, initialLikeCount = 0 }) => {
         setLikeCount(prev => newLikeState ? prev + 1 : Math.max(0, prev - 1));
         
         try {
-            const response = await toggleLike(postId);
+            await toggleLike(postId);
             
-            // If the response is null, it means the like was removed
-            if (response === null) {
-                setIsLiked(false);
-            } else {
-                setIsLiked(true);
-            }
-            
-            // Fetch the actual like count from the server
+            // After successful toggle, fetch the actual like count
             const updatedCount = await getLikeCount(postId);
             setLikeCount(updatedCount);
+            
+            // Fetch the updated like status
+            const hasLiked = await hasUserLiked(postId);
+            setIsLiked(hasLiked);
         } catch (error) {
             console.error('Error toggling like:', error);
             setError('Failed to update like');
